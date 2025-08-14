@@ -6,38 +6,46 @@
 <title>Guardias Aldaia — Frecuencias (Oct 2025 → Jun 2026)</title>
 <style>
   :root{--bg:#f6f8fa;--card:#fff;--muted:#666}
+  *{box-sizing:border-box}
   body{background:var(--bg);font-family:Inter,Segoe UI,Arial,sans-serif;color:#111;margin:0}
-  .wrap{max-width:1200px;margin:20px auto;padding:18px}
+  .wrap{max-width:min(1600px,100%);margin:20px auto;padding:clamp(12px,2vw,18px)}
   header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
-  h1{margin:0;font-size:1.1rem}
+  h1{margin:0;font-size:clamp(1rem,1.2vw,1.2rem)}
   .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.06);margin-bottom:16px}
   .flex{display:flex;gap:12px;flex-wrap:wrap}
   .doctors{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
-  .pill{display:flex;align-items:center;gap:8px;background:#fafafa;border:1px solid #eee;border-radius:10px;padding:6px 8px}
+  .pill{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fafafa;border:1px solid #eee;border-radius:10px;padding:6px 8px}
   .sw{width:18px;height:12px;border-radius:4px;display:inline-block}
   .muted{color:var(--muted)}
   .actions{display:flex;gap:8px;align-items:center}
   button{background:#0b74de;color:#fff;border:0;padding:8px 10px;border-radius:8px;cursor:pointer}
-  .months{display:block;width:100%;max-width:700px;margin:0 auto;}
-  .month{width:100%;background:#fff;border-radius:10px;padding:18px;box-shadow:0 6px 18px rgba(0,0,0,0.04);min-width:0;}
-  @media(max-width:900px){ .months{grid-template-columns:1fr;} .month{padding:8px;} }
-  .month h3{margin:4px 0 12px;text-align:center;font-size:1.1rem}
-  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;background:#ddd;padding:10px;border-radius:12px;width:100%;min-width:0;}
-  .cell{background:#fff;min-height:60px;font-size:0.85rem;padding:8px;display:flex;flex-direction:column;align-items:flex-start;border-radius:8px;transition:border 0.2s;}
+  .mes-input{width:clamp(64px,8vw,90px);padding:6px 8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem}
+
+  /* ===== Calendario responsive ===== */
+  .months{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  .month{width:auto;background:#fff;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(0,0,0,0.04)}
+  .month h3{margin:4px 0 8px;text-align:center;font-size:clamp(0.9rem,1vw,1rem)}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:#ddd;padding:6px;border-radius:8px}
+  .cell{background:#fff;min-height:clamp(58px,7.5vw,88px);padding:6px;font-size:clamp(0.72rem,0.9vw,0.82rem);display:flex;flex-direction:column;align-items:flex-start;border-radius:6px}
+  .cell.head{background:transparent;font-weight:700;text-align:center;min-height:auto;padding:4px}
   .cell.empty{background:transparent;min-height:36px;border:none}
-  .cell.type-festivo{background:#ffecec !important;border:4px solid #e74c3c !important;border-radius:12px !important;box-shadow:0 0 0 2px #e74c3c44;}
-  .cell.type-festivo .date{color:#b00;font-weight:700;}
   .date{font-weight:700;margin-bottom:6px}
-  .tag{display:inline-block;padding:3px 6px;border-radius:8px;margin:3px 0;font-size:0.72rem}
+  .tag{display:inline-block;padding:3px 6px;border-radius:8px;margin:3px 0;font-size:0.72rem;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   table{width:100%;border-collapse:collapse}
   th,td{border:1px solid #eee;padding:6px;text-align:center;font-size:0.82rem}
   th{background:#fafafa}
   /* tipos de día */
-  .festivo{background:#ffecec}
+  .festivo{background:#ffecec;border:2px solid #e57373}
   .puente{background:#fff2dc}
   .pref{background:#e6f4ff}
   .sabado{background:#fff8f0}
   .domingo{background:#f0f0f0}
+
+  @media (max-width: 520px){
+    .grid{gap:4px;padding:4px}
+    .date{margin-bottom:4px}
+    .tag{font-size:0.68rem}
+  }
 </style>
 </head>
 <body>
@@ -46,20 +54,22 @@
     <h1>Guardias Aldaia — Frecuencias por grupo</h1>
     <div class="actions">
       <button id="btnGenerar">Generar automáticamente</button>
+      <button id="btnCSV" title="Exportar a CSV">Exportar CSV</button>
     </div>
   </header>
 
   <!-- Leyenda y médicos -->
   <div class="card">
-    <h3 style="margin:0 0 8px">Médicos y guardias/mes</h3>
+    <h3 style="margin:0 0 8px">Médicos y guardias/mes (tope)</h3>
     <div class="doctors" id="doctorsList"></div>
     <div style="height:10px"></div>
     <div class="muted">
       <strong>Lógica de prioridades (al asignar cada día):</strong>
-      1) Emparejamientos: <em>Rigo–Luceth</em>, <em>Adela–Mica</em> (si ambos cumplen su intervalo y no hay consecutivos).
+      1) Emparejamientos: <em>Rigo–Luceth</em>, <em>Adela–Mica</em> (si ambos cumplen su intervalo, el tope mensual y no hay consecutivos).
       2) Equilibrar <em>sábados</em>, <em>festivos/prefestivos</em> y <em>puentes</em> (se prioriza quien menos tenga).
-      3) Respetar intervalo mínimo entre guardias: 8→cada 4 días; 4→cada 8 días; 3→cada 10 días; 2→cada 15 días; Silvia 1/mes (~30 días).
+      3) Respetar intervalo mínimo entre guardias: 8→cada 4 días; 4→cada 8 días; 3→cada 10 días; 2→cada 16 días; Silvia 2/mes (~16 días).
       4) Nunca dos días seguidos para la misma persona.
+      5) <strong>Nuevo:</strong> No superar el tope mensual de cada médico (la columna “guardias/mes”).
     </div>
   </div>
 
@@ -75,7 +85,7 @@
     <table>
       <thead>
         <tr>
-          <th>Médico</th><th>Total</th><th>Sab</th><th>Dom</th><th>Fest</th><th>Prefest</th><th>Puente</th>
+          <th>Médico</th><th>Total</th><th>Sab</th><th>Dom</th><th>Fest</th><th>Pref</th><th>Puente</th>
         </tr>
       </thead>
       <tbody id="resumenBody"></tbody>
@@ -104,7 +114,7 @@ const MEDICOS = [
   { nombre: "Pepe",   mes: 2 },
   { nombre: "Wendy",  mes: 2 },
   { nombre: "Lerma",  mes: 2 },
-  { nombre: "Silvia", mes: 2 } // ahora 2/mes
+  { nombre: "Silvia", mes: 2 } // 2/mes
 ];
 const PASTEL = ["#FFB3BA","#FFDFBA","#FFFFBA","#BAFFC9","#BAE1FF","#D7BAFF","#FFC8DD","#BFD8B8","#FFDAC1","#E2F0CB","#FF9CEE","#F0C9FF","#B5EAD7","#C7CEEA","#FFCCF9","#C2F0FC"];
 const color = {}; MEDICOS.forEach((m,i)=> color[m.nombre]=PASTEL[i%PASTEL.length]);
@@ -121,6 +131,7 @@ const FESTIVOS = new Set([
 function pad(n){return n<10?'0'+n:''+n}
 function iso(y,m,d){return `${y}-${pad(m)}-${pad(d)}`}
 function ymd(dt){return iso(dt.getFullYear(),dt.getMonth()+1,dt.getDate())}
+function ym(dt){return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`}
 function addDays(d,n){const D=new Date(d);D.setDate(D.getDate()+n);return D}
 function esSab(dt){return dt.getDay()===6}
 function esDom(dt){return dt.getDay()===0}
@@ -166,18 +177,16 @@ function intervaloPorMes(guardiasMes){
   if(guardiasMes>=8) return 4;
   if(guardiasMes===4) return 8;
   if(guardiasMes===3) return 10;
-  if(guardiasMes===2) return 15;
+  if(guardiasMes===2) return 16;
   if(guardiasMes<=1) return 30; // Silvia
-  // fallback
   return Math.max(3, Math.round(30/guardiasMes));
 }
 
 function generarAsignacion(){
   const asig = {}; // iso -> [nombres...]
-  // estado por médico
-  const last = {};     // última fecha asignada
-  const monthCount = {}; // isoMonth 'YYYY-MM' -> { medico:count }
-  const tipoCount = {};  // equilibrio por tipos (sab/fest/pref/puente) y dom
+  const last = {};       // última fecha asignada
+  const monthCount = {}; // 'YYYY-MM' -> { medico:count }
+  const tipoCount = {};  // contadores de tipos (sab/fest/pref/puente/dom)
   MEDICOS.forEach(m=>{
     last[m.nombre]=null;
     tipoCount[m.nombre]={sab:0,fest:0,pref:0,puente:0,dom:0};
@@ -185,7 +194,6 @@ function generarAsignacion(){
 
   // helpers
   function canUse(name, dt, guardiasMes){
-    // no consecutivos
     const L = last[name];
     if(L){
       const diff = Math.round((dt - L)/(1000*3600*24));
@@ -193,12 +201,10 @@ function generarAsignacion(){
       const need = intervaloPorMes(guardiasMes);
       if(diff < need) return false; // respeta intervalo
     }
-    // Silvia: 1/mes
-    if(name==='Silvia'){
-      const ym = ymd(dt).slice(0,7);
-      monthCount[ym]=monthCount[ym]||{};
-      if((monthCount[ym][name]||0) >= 1) return false;
-    }
+    // tope mensual
+    const ymKey = ym(dt);
+    monthCount[ymKey]=monthCount[ymKey]||{};
+    if((monthCount[ymKey][name]||0) >= guardiasMes) return false;
     return true;
   }
 
@@ -213,111 +219,96 @@ function generarAsignacion(){
     return p;
   }
 
+  function urgenciaMensual(name, guardiasMes, dt){
+    const ymKey = ym(dt);
+    const usados = (monthCount[ymKey]?.[name]||0);
+    // menor es mejor; multiplicador alto para priorizar a quien menos lleve
+    return (usados / Math.max(1, guardiasMes));
+  }
+
   // recorrido cronológico
   months.forEach(mon=>{
     mon.days.forEach(cell=>{
       if(cell.empty) return;
       asig[cell.iso] = [];
-      // lista de elegibles por intervalo
+
       const elegibles = MEDICOS.filter(m=> canUse(m.nombre, cell.date, m.mes));
 
-      // 1) Intentar emparejamientos preferidos
+      // 1) Emparejamientos preferidos (si ambos elegibles)
       function intentarPar(a,b){
         const A = elegibles.find(x=>x.nombre===a);
         const B = elegibles.find(x=>x.nombre===b);
         if(A && B){
-          asig[cell.iso].push(a,b);
-          last[a]=new Date(cell.date);
-          last[b]=new Date(cell.date);
-          const ym = cell.iso.slice(0,7);
-          monthCount[ym]=monthCount[ym]||{};
-          monthCount[ym][a]=(monthCount[ym][a]||0)+1;
-          monthCount[ym][b]=(monthCount[ym][b]||0)+1;
-          // tipos
-          if(cell.sab){tipoCount[a].sab++;tipoCount[b].sab++}
-          if(cell.fest){tipoCount[a].fest++;tipoCount[b].fest++}
-          if(cell.pref){tipoCount[a].pref++;tipoCount[b].pref++}
-          if(cell.puente){tipoCount[a].puente++;tipoCount[b].puente++}
-          if(cell.dom){tipoCount[a].dom++;tipoCount[b].dom++}
+          asentar(a); asentar(b);
           return true;
         }
         return false;
       }
+
+      function asentar(nombre){
+        asig[cell.iso].push(nombre);
+        last[nombre]=new Date(cell.date);
+        const ymKey = ym(cell.date);
+        monthCount[ymKey]=monthCount[ymKey]||{};
+        monthCount[ymKey][nombre]=(monthCount[ymKey][nombre]||0)+1;
+        if(cell.sab) tipoCount[nombre].sab++;
+        if(cell.fest) tipoCount[nombre].fest++;
+        if(cell.pref) tipoCount[nombre].pref++;
+        if(cell.puente) tipoCount[nombre].puente++;
+        if(cell.dom) tipoCount[nombre].dom++;
+      }
+
       if(asig[cell.iso].length<2){
-        // prefer Rigo–Luceth
-        if(intentarPar('Rigo','Luceth')===false){
-          // prefer Adela–Mica
+        if(!intentarPar('Rigo','Luceth')){
           intentarPar('Adela','Mica');
         }
       }
 
-      // 2) Rellenar hasta 2 con mejor “score”:
+      // 2) Rellenar hasta 2 con mejor “score”
       if(asig[cell.iso].length<2){
-        // candidatos disponibles (sin los ya puestos)
         const cands = MEDICOS
           .filter(m=> !asig[cell.iso].includes(m.nombre) && canUse(m.nombre, cell.date, m.mes))
           .map(m=>{
-            // score: prioridad por grupo (más alta frecuencia primero) pero ajustado por penalización de tipos
             const base = (m.mes>=8)?0 : (m.mes===4?1 : (m.mes===3?2 : (m.mes===2?3:4)));
             const pen = penalizacionTipo(m.nombre, cell);
-            return {m, score: base*100 + pen}; // base pesa más que pen
+            const urg = urgenciaMensual(m.nombre, m.mes, cell.date);
+            // base domina; luego urgencia mensual; luego penalización de tipos
+            return {m, score: base*100 + urg*50 + pen};
           })
           .sort((a,b)=> a.score - b.score);
 
         while(asig[cell.iso].length<2 && cands.length){
           const pick = cands.shift().m;
-          asig[cell.iso].push(pick.nombre);
-          last[pick.nombre]=new Date(cell.date);
-          const ym = cell.iso.slice(0,7);
-          monthCount[ym]=monthCount[ym]||{};
-          monthCount[ym][pick.nombre]=(monthCount[ym][pick.nombre]||0)+1;
-          if(cell.sab) tipoCount[pick.nombre].sab++;
-          if(cell.fest) tipoCount[pick.nombre].fest++;
-          if(cell.pref) tipoCount[pick.nombre].pref++;
-          if(cell.puente) tipoCount[pick.nombre].puente++;
-          if(cell.dom) tipoCount[pick.nombre].dom++;
+          asentar(pick.nombre);
         }
       }
 
-      // 3) Si aún falta alguien (muy raro por intervalos), relajar un poco intervalo, nunca consecutivo
+      // 3) Fallback: relajar solo intervalo (nunca consecutivo, nunca pasar tope mensual)
       if(asig[cell.iso].length<2){
         const flex = MEDICOS
           .filter(m=>{
             if(asig[cell.iso].includes(m.nombre)) return false;
-            // no consecutivo
             const L = last[m.nombre];
             if(L){
               const diff = Math.round((cell.date - L)/(1000*3600*24));
-              if(diff<=1) return false;
+              if(diff<=1) return false; // sigue prohibido consecutivo
             }
-            // Silvia sigue limitada 1/mes
-            if(m.nombre==='Silvia'){
-              const ym = cell.iso.slice(0,7);
-              monthCount[ym]=monthCount[ym]||{};
-              if((monthCount[ym][m.nombre]||0)>=1) return false;
-            }
+            const ymKey = ym(cell.date);
+            monthCount[ymKey]=monthCount[ymKey]||{};
+            if((monthCount[ymKey][m.nombre]||0) >= m.mes) return false; // no rebasar tope
             return true;
           })
           .map(m=>({m, score: penalizacionTipo(m.nombre, cell)}))
           .sort((a,b)=> a.score - b.score);
         while(asig[cell.iso].length<2 && flex.length){
           const pick = flex.shift().m;
-          asig[cell.iso].push(pick.nombre);
-          last[pick.nombre]=new Date(cell.date);
-          const ym = cell.iso.slice(0,7);
-          monthCount[ym]=monthCount[ym]||{};
-          monthCount[ym][pick.nombre]=(monthCount[ym][pick.nombre]||0)+1;
-          if(cell.sab) tipoCount[pick.nombre].sab++;
-          if(cell.fest) tipoCount[pick.nombre].fest++;
-          if(cell.pref) tipoCount[pick.nombre].pref++;
-          if(cell.puente) tipoCount[pick.nombre].puente++;
-          if(cell.dom) tipoCount[pick.nombre].dom++;
+          asentar(pick.nombre);
         }
       }
     });
   });
 
-  return asig;
+  return { asig, monthCount, tipoCount };
 }
 
 /* =========================
@@ -326,35 +317,50 @@ function generarAsignacion(){
 function renderDoctors(){
   const host = document.getElementById('doctorsList');
   host.innerHTML='';
-  MEDICOS.forEach((m, idx)=>{
+  MEDICOS.forEach(m=>{
     const div=document.createElement('div'); div.className='pill';
+    const left=document.createElement('div'); left.style.display='flex'; left.style.alignItems='center'; left.style.gap='8px';
     const sw=document.createElement('span'); sw.className='sw'; sw.style.background=color[m.nombre];
-    const txt=document.createElement('span'); txt.textContent=m.nombre;
-    const input=document.createElement('input'); input.type='number'; input.min=1; input.value=m.mes; input.style.width='48px';
-    input.addEventListener('change',e=>{
-      const val = Math.max(1,parseInt(e.target.value)||1);
-      m.mes = val;
-    });
-    div.append(sw,txt,input); host.appendChild(div);
+    const name=document.createElement('span'); name.textContent=m.nombre;
+    left.append(sw,name);
+
+    const right=document.createElement('div');
+    const input=document.createElement('input');
+    input.type='number'; input.min='0'; input.step='1'; input.className='mes-input'; input.value=String(m.mes); input.dataset.name=m.nombre;
+    input.title='Guardias/mes';
+    right.appendChild(input);
+
+    div.append(left,right); host.appendChild(div);
+  });
+}
+
+function updateMedicosFromInputs(){
+  const inputs = document.querySelectorAll('.mes-input');
+  inputs.forEach(inp=>{
+    const name = inp.dataset.name;
+    const val = Math.max(0, Math.floor(Number(inp.value)||0));
+    const m = MEDICOS.find(x=> x.nombre === name);
+    if(m) m.mes = val;
   });
 }
 
 /* =========================
    Render calendario + resumen
    ========================= */
-function renderCalendario(asig){
+function renderCalendario(payload){
+  const { asig } = payload;
   const monthsEl=document.getElementById('months');
   monthsEl.innerHTML='';
   const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-  // resumen contadores
+  // resumen contadores (periodo completo)
   const res={}; MEDICOS.forEach(m=> res[m.nombre]={tot:0,sab:0,dom:0,fest:0,pref:0,puente:0});
 
   months.forEach(mon=>{
     const box=document.createElement('div'); box.className='month';
     const h=document.createElement('h3'); h.textContent=`${meses[mon.month]} ${mon.year}`; box.appendChild(h);
     const grid=document.createElement('div'); grid.className='grid';
-    ['L','M','X','J','V','S','D'].forEach(t=>{const hd=document.createElement('div');hd.className='cell';hd.style.fontWeight='700';hd.style.textAlign='center';hd.textContent=t;grid.appendChild(hd);});
+    ['L','M','X','J','V','S','D'].forEach(t=>{const hd=document.createElement('div');hd.className='cell head';hd.textContent=t;grid.appendChild(hd);});
     mon.days.forEach(cell=>{
       const c=document.createElement('div'); c.className='cell';
       if(cell.empty){ c.classList.add('empty'); grid.appendChild(c); return; }
@@ -377,7 +383,7 @@ function renderCalendario(asig){
     monthsEl.appendChild(box);
   });
 
-  // resumen table
+  // resumen table (periodo)
   const tb=document.getElementById('resumenBody'); tb.innerHTML='';
   MEDICOS.forEach(m=>{
     const r=res[m.nombre];
@@ -388,16 +394,61 @@ function renderCalendario(asig){
   });
 }
 
+/* =========================
+   Exportación CSV
+   ========================= */
+function exportCSV(payload){
+  const { asig } = payload;
+  const lines = [];
+  lines.push(['Fecha','DíaSemana','Tipo','Médico 1','Médico 2'].join(','));
+  const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+  months.forEach(mon=>{
+    mon.days.forEach(cell=>{
+      if(cell.empty) return;
+      const tipos=[];
+      if(cell.fest) tipos.push('Fest');
+      if(cell.pref) tipos.push('Pref');
+      if(cell.puente) tipos.push('Puente');
+      if(cell.sab) tipos.push('Sab');
+      if(cell.dom) tipos.push('Dom');
+      const tipoStr = tipos.join('+')||'N/A';
+      const noms = asig[cell.iso]||[];
+      const row = [cell.iso, diasSemana[cell.date.getDay()], tipoStr, noms[0]||'', noms[1]||''];
+      lines.push(row.map(x=> typeof x==='string' && x.includes(',') ? '"'+x+'"' : x).join(','));
+    });
+  });
+
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'guardias-aldaia.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /* ================
    Start + Eventos
    ================ */
+let ultimo = null; // {asig, monthCount, tipoCount}
+
 buildMonths();
 renderDoctors();
+
 document.getElementById('btnGenerar').addEventListener('click', ()=>{
-  const asig = generarAsignacion();
-  renderCalendario(asig);
+  updateMedicosFromInputs();
+  ultimo = generarAsignacion();
+  renderCalendario(ultimo);
 });
-// Autogenerar en carga para ver algo
+
+document.getElementById('btnCSV').addEventListener('click', ()=>{
+  if(!ultimo){
+    ultimo = generarAsignacion();
+  }
+  exportCSV(ultimo);
+});
+
+// Autogenerar en carga
 document.getElementById('btnGenerar').click();
 </script>
 </body>
