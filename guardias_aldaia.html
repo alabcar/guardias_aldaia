@@ -110,9 +110,9 @@
 <script>
 /* ------------- Datos precargados ------------- */
 const medicosInit = [
-  { nombre: 'Adela', min:8, max:8 },
-  { nombre: 'Rigo', min:8, max:8 },
-  { nombre: 'Merino', min:8, max:8 },
+  { nombre: 'Adela', min:8, max:9 },
+  { nombre: 'Rigo', min:8, max:9 },
+  { nombre: 'Merino', min:4, max:4 },
   { nombre: 'Mica', min:4, max:4 },
   { nombre: 'Naby', min:4, max:4 },
   { nombre: 'Estrella', min:4, max:4 },
@@ -372,8 +372,31 @@ function autoFill(){
 
   // For each month in chronological order
   for(const mon of monthsList){
-    // compute monthly quotas per doctor (min values)
-    const quotas = {}; doctors.forEach(d=>quotas[d.nombre] = d.min);
+    // Recalcular cupos de todos los médicos (incluyendo nuevos)
+    const quotas = {};
+    doctors.forEach(d=>quotas[d.nombre] = d.min);
+
+    // Guardias totales del mes
+    const totalDias = mon.days.filter(cell=>!cell.empty).length * 2;
+    let sumaGuardias = Object.values(quotas).reduce((a,b)=>a+b,0);
+    // Si sobran guardias, repartir extra a los contratados (max 9), luego disminuir a los que más tienen (min<8)
+    let contratados = doctors.filter(d=>d.min>=8);
+    let resto = doctors.filter(d=>d.min<8);
+    let faltan = totalDias - sumaGuardias;
+    // Primero subir a max los contratados si faltan guardias
+    for(let d of contratados){
+      while(faltan>0 && quotas[d.nombre]<d.max){ quotas[d.nombre]++; faltan--; }
+    }
+    // Si aún sobran guardias, repartir a los que más tienen (min<8)
+    while(faltan>0 && resto.length>0){
+      resto.sort((a,b)=>quotas[b.nombre]-quotas[a.nombre]);
+      let d = resto[0];
+      quotas[d.nombre]++; faltan--;
+    }
+    // Si sobran guardias, repartir equitativamente entre todos
+    while(faltan>0){
+      for(let d of doctors){ quotas[d.nombre]++; faltan--; if(faltan<=0) break; }
+    }
 
     // subtract manual assignments in this month
     for(const cell of mon.days){
@@ -408,27 +431,29 @@ function autoFill(){
     }
 
     // candidate selection function for a cell
-    function pickForCell(cell){
-      // candidates: docs with quota>0 and no adjacency
-      let cand = doctors.filter(d=> quotas[d.nombre] > 0 && !hasAdj(d.nombre, cell.iso));
-      if(cand.length === 0){
-        // relax adjacency if absolutely needed: allow candidates with quota but adjacency -> won't pick if adjacency causes two consecutive for same doc (we checked), but we allow if no other choice
-        cand = doctors.filter(d=> quotas[d.nombre] > 0);
-      }
+    function pickForCell(cell, assignedNames){
+      // Excluir médicos ya asignados ese día
+      let cand = doctors.filter(d=> quotas[d.nombre] > 0 && !hasAdj(d.nombre, cell.iso) && !assignedNames.includes(d.nombre));
+      if(cand.length === 0){ cand = doctors.filter(d=> quotas[d.nombre] > 0 && !assignedNames.includes(d.nombre)); }
       if(cand.length === 0) return null;
-      // sort by how many of this type they already have (prefer lowest), tie-breaker: total assigned so far
+      // Proporcionalidad: calcula ratio de guardias especiales respecto al objetivo de guardias de cada médico
       cand.sort((a,b)=>{
-        const sa = stats[a.nombre].byType;
-        const sb = stats[b.nombre].byType;
-        let aCount=0,bCount=0;
-        if(cell.dow===6){ aCount=sa.sab; bCount=sb.sab; }
-        else if(cell.isFest){ aCount=sa.fest; bCount=sb.fest; }
-        else if(cell.isPref){ aCount=sa.pref; bCount=sb.pref; }
-        else if(cell.isPuente){ aCount=sa.puente; bCount=sb.puente; }
-        else if(cell.dow===1){ aCount=sa.mon||0; bCount=sb.mon||0; }
-        else { aCount=sa.resto; bCount=sb.resto; }
-        if(aCount !== bCount) return aCount - bCount;
+        // Prioridad: contratados primero
+        if(a.min>=8 && b.min<8) return -1;
+        if(b.min>=8 && a.min<8) return 1;
+        // Ratio de guardias especiales (festivos, sábados, etc.) respecto a su cupo objetivo
+        let tipoA = 0, tipoB = 0, objetivoA = quotas[a.nombre]+stats[a.nombre].total, objetivoB = quotas[b.nombre]+stats[b.nombre].total;
+        if(cell.isFest) { tipoA = stats[a.nombre].byType.fest; tipoB = stats[b.nombre].byType.fest; }
+        else if(cell.dow===6) { tipoA = stats[a.nombre].byType.sab; tipoB = stats[b.nombre].byType.sab; }
+        else if(cell.isPref) { tipoA = stats[a.nombre].byType.pref; tipoB = stats[b.nombre].byType.pref; }
+        else if(cell.isPuente) { tipoA = stats[a.nombre].byType.puente; tipoB = stats[b.nombre].byType.puente; }
+        let ratioA = tipoA / Math.max(1, objetivoA);
+        let ratioB = tipoB / Math.max(1, objetivoB);
+        if(ratioA !== ratioB) return ratioA - ratioB;
+        // Menos guardias totales primero
         if(stats[a.nombre].total !== stats[b.nombre].total) return stats[a.nombre].total - stats[b.nombre].total;
+        // Menos cupo restante primero
+        if(quotas[a.nombre]!==quotas[b.nombre]) return quotas[a.nombre]-quotas[b.nombre];
         return a.nombre.localeCompare(b.nombre);
       });
       return cand[0];
@@ -441,7 +466,7 @@ function autoFill(){
         const key = cell.iso;
         if(!assignments[key]) assignments[key] = { names: [], manual: [] };
         while(assignments[key].names.length < 2){
-          const chosen = pickForCell(cell);
+          const chosen = pickForCell(cell, assignments[key].names);
           if(!chosen) break;
           // assign
           assignments[key].names.push(chosen.nombre);
