@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guardias Aldaia 2025-2026</title>
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f9f9f9;
+    margin: 0;
+    padding: 1rem;
+    color: #222;
+  }
+  h2 { text-align: center; margin-bottom: 1rem; }
+  .container { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+  .panel { background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 5px rgba(0,0,0,0.1); flex: 1; min-width: 280px; }
+  .panel h3 { margin-top: 0; }
+  .medico { display: flex; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
+  input[type=text], input[type=number] { padding: 2px 4px; font-size: 0.9rem; border: 1px solid #ccc; border-radius: 4px; width: auto; }
+  button { padding: 3px 6px; font-size: 0.85rem; border: none; border-radius: 4px; cursor: pointer; background: #0077cc; color: #fff; }
+  button:hover { background: #005fa3; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { border: 1px solid #ccc; padding: 4px 6px; font-size: 0.75rem; text-align: center; }
+  th { background: #f0f0f0; }
+  #calendar { display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; margin-bottom: 2rem; }
+  .month { background: linear-gradient(135deg,#f7faff 80%,#e3e3e3 100%); padding: 1.2rem 0.8rem 1rem 0.8rem; border-radius: 16px; width: 340px; box-shadow: 0 2px 12px rgba(0,0,0,0.10); margin-bottom: 2rem; border: 2px solid #e0e7ef; }
+  .month h4 { text-align: center; margin: 0.7rem 0 1.2rem 0; font-size: 1.35rem; font-weight: 600; letter-spacing: 1px; color: #2a3a4a; }
+  .days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    background: #e0e7ef;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1.2rem;
+    min-width: 100%;
+  }
+  .day {
+    background: #fff;
+    padding: 8px 0 8px 0;
+    min-height: 62px;
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    border-right: 1px solid #e0e7ef;
+    border-bottom: 1px solid #e0e7ef;
+    box-sizing: border-box;
+  }
+  .days .day:nth-child(7n) {
+    border-right: none;
+  }
+  .days .day:nth-last-child(-n+7) {
+    border-bottom: none;
+  }
+  .day span { font-size: 0.7rem; margin-top: 2px; display: block; }
+  .festivo { background: #ffdede; }
+  .puente { background: #ffe7cc; }
+  .prefestivo { background: #d0f0ff; }
+  .domingo { background: #e6e6e6; }
+  @media(max-width:800px){ .month{width:100%;} }
+</style>
+</head>
+<body>
+<h2>Guardias Centro de Salud Aldaia (Oct 2025 - Jun 2026)</h2>
+
+<div class="container">
+  <div class="panel" id="medicos-list">
+    <h3>Médicos</h3>
+  </div>
+  <div class="panel" id="resumen-list">
+    <h3>Resumen</h3>
+  </div>
+</div>
+
+<div id="calendar"></div>
+
+<script>
+// --- CONFIGURACIÓN ---
+let medicos = [
+  { nombre: 'Adela', minGuardias: 8, maxGuardias: 8 },
+  { nombre: 'Rigo', minGuardias: 8, maxGuardias: 8 },
+  { nombre: 'Merino', minGuardias: 8, maxGuardias: 8 },
+  { nombre: 'Mica', minGuardias: 4, maxGuardias: 4 },
+  { nombre: 'Naby', minGuardias: 4, maxGuardias: 4 },
+  { nombre: 'Estrella', minGuardias: 4, maxGuardias: 4 },
+  { nombre: 'Amparo', minGuardias: 4, maxGuardias: 4 },
+  { nombre: 'Sara', minGuardias: 4, maxGuardias: 4 },
+  { nombre: 'Luceth', minGuardias: 4, maxGuardias: 4 },
+  { nombre: 'Salva', minGuardias: 3, maxGuardias: 3 },
+  { nombre: 'Brian', minGuardias: 2, maxGuardias: 2 },
+  { nombre: 'Marta', minGuardias: 2, maxGuardias: 2 },
+  { nombre: 'Julia', minGuardias: 2, maxGuardias: 2 },
+  { nombre: 'Pepe', minGuardias: 2, maxGuardias: 2 },
+  { nombre: 'Wendy', minGuardias: 2, maxGuardias: 2 },
+  { nombre: 'Lerma', minGuardias: 2, maxGuardias: 2 }
+];
+
+// Colores pastel para cada médico
+let colores = ["#FFB3BA","#FFDFBA","#FFFFBA","#BAFFC9","#BAE1FF","#E3BAFF","#FFC2DE","#C2FFC2","#B3E0FF","#FFDEBA","#FFBFB3","#BAFFD9","#C2BAFF","#FFBAF2","#BAFFD4","#FFD8BA"];
+
+let festivos = [
+  '2025-10-09','2025-11-01','2025-12-06','2025-12-08','2025-12-25',
+  '2026-01-01','2026-01-06','2026-03-19','2026-03-29','2026-04-02','2026-04-03','2026-04-06','2026-05-01','2026-08-15'
+];
+
+let numMedicosPorDia = 2;
+let guardiasAsignadas = {};
+
+// --- UTILIDADES ---
+function getFestivoPuente(year, month, day) {
+  const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  if (festivos.includes(dateStr)) return 'festivo';
+  const prevDate = `${year}-${String(month+1).padStart(2,'0')}-${String(day-1).padStart(2,'0')}`;
+  const nextDate = `${year}-${String(month+1).padStart(2,'0')}-${String(day+1).padStart(2,'0')}`;
+  if (festivos.includes(prevDate) || festivos.includes(nextDate)) return 'puente';
+  return '';
+}
+
+function getDiasMes(year, month) {
+  const dias = [];
+  const lastDay = new Date(year, month+1, 0).getDate();
+  for(let d=1; d<=lastDay; d++) {
+    const date = new Date(year, month, d);
+    dias.push({
+      date, year, month, day: d,
+      dayOfWeek: date.getDay(),
+      festPuente: getFestivoPuente(year, month, d)
+    });
+  }
+  return dias;
+}
+
+// --- DISTRIBUCIÓN ---
+function distribuirGuardias() {
+  guardiasAsignadas = {};
+  for(let y=2025; y<=2026; y++) {
+    let startMonth = (y===2025)?9:0;
+    let endMonth = (y===2026)?5:11;
+    for(let m=startMonth;m<=endMonth;m++) {
+      const diasMes = getDiasMes(y,m);
+      // Clasificar días según prioridad
+      let diasPrioridad = [[],[],[],[],[]]; // sábados, festivos, prefestivos, lunes, resto
+      diasMes.forEach(dia => {
+        if(dia.dayOfWeek===6) diasPrioridad[0].push(dia); // Sábado
+        else if(dia.festPuente==='festivo') diasPrioridad[1].push(dia);
+        else if(festivos.includes(`${dia.year}-${String(dia.month+1).padStart(2,'0')}-${String(dia.day+1).padStart(2,'0')}`)) diasPrioridad[2].push(dia); // Prefestivo
+        else if(dia.dayOfWeek===1) diasPrioridad[3].push(dia); // Lunes
+        else diasPrioridad[4].push(dia);
+      });
+      // Inicializar contadores mensuales
+      let contadores = medicos.map((m,idx)=>{
+        let min = m.minGuardias;
+        let max = m.maxGuardias;
+        if(min === 8) { min = 8; max = 9; }
+        return {nombre:m.nombre, guardias:0, min, max, color: colores[idx%colores.length]};
+      });
+      let libres = {}; medicos.forEach(m=>libres[m.nombre]=false);
+
+      // 1. Repartir festivos equitativamente entre médicos contratados (min 8)
+      let festivosDias = diasPrioridad[1];
+      let medicosContratados = contadores.filter(c=>c.min===8);
+      let festivosPorMedico = Math.floor(festivosDias.length / medicosContratados.length);
+      let restoFestivos = festivosDias.length % medicosContratados.length;
+      let festivosAsignados = {};
+      medicosContratados.forEach(m=>festivosAsignados[m.nombre]=0);
+      let festivoIdx = 0;
+      for(const dia of festivosDias){
+        // Asignar festivos de forma rotativa y equitativa
+        let medico = medicosContratados[festivoIdx % medicosContratados.length];
+        const fechaStr = `${dia.year}-${String(dia.month+1).padStart(2,'0')}-${String(dia.day).padStart(2,'0')}`;
+        guardiasAsignadas[fechaStr] = [medico.nombre];
+        medico.guardias++;
+        festivosAsignados[medico.nombre]++;
+        festivoIdx++;
+      }
+
+      // 2. Reparto por prioridad para el resto de días
+      for(let p=0;p<diasPrioridad.length;p++){
+        // Saltar festivos ya asignados
+        if(p===1) continue;
+        for(const dia of diasPrioridad[p]){
+          const fechaStr = `${dia.year}-${String(dia.month+1).padStart(2,'0')}-${String(dia.day).padStart(2,'0')}`;
+          guardiasAsignadas[fechaStr] = guardiasAsignadas[fechaStr] || [];
+          let asignados = [];
+          let candidatos = contadores.filter(c=>c.guardias<c.max && !libres[c.nombre]);
+          // Priorizar los que no han llegado al mínimo
+          candidatos.sort((a,b)=>{
+            const aNecesita = a.guardias<a.min?-1:1;
+            const bNecesita = b.guardias<b.min?-1:1;
+            if(aNecesita!==bNecesita) return aNecesita-bNecesita;
+            return a.guardias-b.guardias;
+          });
+          for(let i=0;i<numMedicosPorDia;i++){
+            if(candidatos.length===0) break;
+            let elegido = candidatos[0];
+            // Evitar duplicados en festivos
+            if(guardiasAsignadas[fechaStr].includes(elegido.nombre)) continue;
+            asignados.push(elegido.nombre);
+            elegido.guardias++;
+            libres[elegido.nombre]=true;
+            candidatos = contadores.filter(c=>c.guardias<c.max && !libres[c.nombre]);
+            candidatos.sort((a,b)=>{
+              const aNecesita = a.guardias<a.min?-1:1;
+              const bNecesita = b.guardias<b.min?-1:1;
+              if(aNecesita!==bNecesita) return aNecesita-bNecesita;
+              return a.guardias-b.guardias;
+            });
+          }
+          guardiasAsignadas[fechaStr]=guardiasAsignadas[fechaStr].concat(asignados);
+          Object.keys(libres).forEach(n=>libres[n]=false);
+          asignados.forEach(n=>libres[n]=true);
+        }
+      }
+    }
+  }
+}
+
+// --- INTERFAZ ---
+function renderMedicosList() {
+  const container=document.getElementById('medicos-list');
+  container.innerHTML='<h3>Médicos</h3>';
+  medicos.forEach((m,idx)=>{
+    const div=document.createElement('div'); div.className='medico';
+    const inputNombre=document.createElement('input'); inputNombre.type='text'; inputNombre.value=m.nombre;
+    inputNombre.addEventListener('change',function(){medicos[idx].nombre=this.value; distribuirGuardias(); renderResumen(); renderYearCalendar();});
+    const inputMin=document.createElement('input'); inputMin.type='number'; inputMin.min=0; inputMin.value=m.minGuardias;
+    inputMin.addEventListener('change',function(){medicos[idx].minGuardias=parseInt(this.value); distribuirGuardias(); renderResumen(); renderYearCalendar();});
+    const inputMax=document.createElement('input'); inputMax.type='number'; inputMax.min=1; inputMax.value=m.maxGuardias;
+    inputMax.addEventListener('change',function(){medicos[idx].maxGuardias=parseInt(this.value); distribuirGuardias(); renderResumen(); renderYearCalendar();});
+    const btnEliminar=document.createElement('button'); btnEliminar.textContent='Eliminar';
+    btnEliminar.addEventListener('click',function(){medicos.splice(idx,1); distribuirGuardias(); renderResumen(); renderYearCalendar(); renderMedicosList();});
+    div.appendChild(inputNombre);
+    div.appendChild(document.createTextNode(' Min: ')); div.appendChild(inputMin);
+    div.appendChild(document.createTextNode(' Max: ')); div.appendChild(inputMax);
+    div.appendChild(btnEliminar);
+    container.appendChild(div);
+  });
+  const btnAdd=document.createElement('button'); btnAdd.textContent='Añadir médico';
+  btnAdd.addEventListener('click',function(){medicos.push({nombre:'Nuevo',minGuardias:2,maxGuardias:2}); renderMedicosList(); renderResumen(); renderYearCalendar();});
+  container.appendChild(btnAdd);
+}
+
+// --- RESUMEN EN TABLA ---
+function renderResumen() {
+  distribuirGuardias();
+  const resumen={};
+  medicos.forEach((m,idx)=>resumen[m.nombre]={color:colores[idx%colores.length],total:0,lunes:0,martes:0,miercoles:0,jueves:0,viernes:0,sabado:0,domingo:0,festivo:0,puente:0,prefestivo:0});
+  Object.keys(guardiasAsignadas).forEach(fechaStr=>{
+    const guardias=guardiasAsignadas[fechaStr];
+    const [year,month,day]=fechaStr.split('-').map(Number);
+    const date=new Date(year,month-1,day);
+    const dayOfWeek=date.getDay();
+    let diaSemana=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][dayOfWeek];
+    let festPuente=getFestivoPuente(year,month-1,day);
+    let esPrefestivo=false;
+    const nextDate=`${year}-${String(month).padStart(2,'0')}-${String(day+1).padStart(2,'0')}`;
+    if(festivos.includes(nextDate)) esPrefestivo=true;
+    guardias.forEach(nombre=>{
+      if(!resumen[nombre]) return;
+      resumen[nombre].total++;
+      resumen[nombre][diaSemana]++;
+      if(festPuente==='festivo') resumen[nombre].festivo++;
+      if(festPuente==='puente') resumen[nombre].puente++;
+      if(esPrefestivo) resumen[nombre].prefestivo++;
+    });
+  });
+  const container=document.getElementById('resumen-list');
+  container.innerHTML='<h3>Resumen</h3>';
+  const table=document.createElement('table');
+  const ths = `<tr>
+    <th>Médico</th><th>Total</th><th>L</th><th>M</th><th>X</th><th>J</th><th>V</th><th>S</th><th>D</th><th>Festivos</th><th>Puentes</th><th>Prefestivos</th>
+  </tr>`;
+  table.innerHTML=ths;
+  Object.keys(resumen).forEach(nombre=>{
+    const r=resumen[nombre];
+    const tr=document.createElement('tr');
+    tr.style.background=r.color;
+    tr.innerHTML=`<td>${nombre}</td><td>${r.total}</td><td>${r.lunes}</td><td>${r.martes}</td><td>${r.miercoles}</td><td>${r.jueves}</td><td>${r.viernes}</td><td>${r.sabado}</td><td>${r.domingo}</td><td>${r.festivo}</td><td>${r.puente}</td><td>${r.prefestivo}</td>`;
+    table.appendChild(tr);
+  });
+  container.appendChild(table);
+}
+
+// --- CALENDARIO ---
+function renderYearCalendar() {
+  const container=document.getElementById('calendar');
+  container.innerHTML='';
+  for(let y=2025;y<=2026;y++){
+    let startMonth=(y===2025)?9:0;
+    let endMonth=(y===2026)?5:11;
+    for(let m=startMonth;m<=endMonth;m++){
+      const dias=getDiasMes(y,m);
+      const mesDiv=document.createElement('div'); mesDiv.className='month';
+      mesDiv.innerHTML=`<h4>${dias[0].date.toLocaleString('es-ES',{month:'long', year:'numeric'})}</h4>`;
+      const grid=document.createElement('div'); grid.className='days';
+      // Encabezado lunes a domingo
+      ['L','M','X','J','V','S','D'].forEach(weekday=>{ 
+        const wDiv=document.createElement('div'); 
+        wDiv.style.fontWeight='bold'; wDiv.style.textAlign='center'; 
+        wDiv.textContent=weekday; 
+        grid.appendChild(wDiv); 
+      });
+      // Calcular el primer día del mes (0=domingo, 1=lunes...)
+      const firstDay = dias[0].date.getDay();
+      // Ajustar para que el mes empiece en lunes
+      let offset = (firstDay === 0) ? 6 : firstDay - 1;
+      for(let i=0;i<offset;i++){
+        const emptyDiv=document.createElement('div'); emptyDiv.className='day'; emptyDiv.innerHTML=''; grid.appendChild(emptyDiv);
+      }
+      dias.forEach(dia=>{
+        const dayDiv=document.createElement('div'); dayDiv.className='day';
+        if(dia.festPuente==='festivo') dayDiv.classList.add('festivo');
+        if(dia.festPuente==='puente') dayDiv.classList.add('puente');
+        if(dia.dayOfWeek===0) dayDiv.classList.add('domingo');
+        const fechaStr=`${dia.year}-${String(dia.month+1).padStart(2,'0')}-${String(dia.day).padStart(2,'0')}`;
+        let innerHTML=`${dia.day}<span>`;
+        guardiasAsignadas[fechaStr].forEach(nombre=>{
+          const idx = medicos.findIndex(m=>m.nombre===nombre);
+          const color = colores[idx%colores.length];
+          innerHTML+=`<span style="background:${color};padding:1px 2px;border-radius:3px;margin:1px;display:inline-block;">${nombre}</span>`;
+        });
+        innerHTML+='</span>';
+        dayDiv.innerHTML=innerHTML;
+        grid.appendChild(dayDiv);
+      });
+      // Rellenar hasta 42 días (6 filas de 7 días)
+      let totalCeldas = offset + dias.length;
+      for(let i=totalCeldas;i<42;i++){
+        const emptyDiv=document.createElement('div'); emptyDiv.className='day'; emptyDiv.innerHTML=''; grid.appendChild(emptyDiv);
+      }
+      mesDiv.appendChild(grid);
+
+      // Resumen mensual de guardias por médico
+      const resumenMes = {};
+      medicos.forEach((m, idx) => {
+        resumenMes[m.nombre] = { total: 0, color: colores[idx % colores.length] };
+      });
+      dias.forEach(dia => {
+        const fechaStr = `${dia.year}-${String(dia.month+1).padStart(2,'0')}-${String(dia.day).padStart(2,'0')}`;
+        if (guardiasAsignadas[fechaStr]) {
+          guardiasAsignadas[fechaStr].forEach(nombre => {
+            if (resumenMes[nombre]) resumenMes[nombre].total++;
+          });
+        }
+      });
+      const resumenTable = document.createElement('table');
+      resumenTable.style.margin = '12px auto 0 auto';
+      resumenTable.style.width = '95%';
+      resumenTable.innerHTML = `<tr><th style='text-align:left'>Médico</th><th>Guardias</th></tr>`;
+      Object.keys(resumenMes).forEach(nombre => {
+        const r = resumenMes[nombre];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style='background:${r.color};border-radius:4px;padding:2px 6px;'>${nombre}</td><td>${r.total}</td>`;
+        resumenTable.appendChild(tr);
+      });
+      mesDiv.appendChild(resumenTable);
+      container.appendChild(mesDiv);
+    }
+  }
+}
+
+// --- INICIAL ---
+renderMedicosList();
+renderResumen();
+renderYearCalendar();
+</script>
+</body>
+</html>
