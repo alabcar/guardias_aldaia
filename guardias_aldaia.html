@@ -18,7 +18,57 @@
   .muted{color:var(--muted)}
   .actions{display:flex;gap:8px;align-items:center}
   button{background:#0b74de;color:#fff;border:0;padding:8px 10px;border-radius:8px;cursor:pointer}
-  .months{display:block;width:100%;max-width:700px;margin:0 auto;}
+  .months{
+    display:block;
+    width:90%;
+    max-width:680px;
+    margin:0 auto;
+    transition:width 0.2s;
+  }
+  @media (max-width: 900px) {
+    .months {
+      width:98%;
+      max-width:100vw;
+      padding:0 2vw;
+    }
+    .month {
+      padding:8px;
+    }
+    .grid {
+      gap:4px;
+      padding:4px;
+    }
+    .cell {
+      min-height:44px;
+      font-size:0.78rem;
+      padding:5px;
+    }
+    .month h3 {
+      font-size:1rem;
+    }
+  }
+  @media (max-width: 520px) {
+    .months {
+      width:100%;
+      max-width:100vw;
+      padding:0 1vw;
+    }
+    .month {
+      padding:4px;
+    }
+    .grid {
+      gap:2px;
+      padding:2px;
+    }
+    .cell {
+      min-height:32px;
+      font-size:0.72rem;
+      padding:3px;
+    }
+    .month h3 {
+      font-size:0.92rem;
+    }
+  }
   .month{width:100%;background:#fff;border-radius:10px;padding:18px;box-shadow:0 6px 18px rgba(0,0,0,0.04);min-width:0;}
   @media(max-width:900px){ .months{grid-template-columns:1fr;} .month{padding:8px;} }
   .month h3{margin:4px 0 12px;text-align:center;font-size:1.1rem}
@@ -55,21 +105,22 @@
     <div class="doctors" id="doctorsList"></div>
     <div style="height:10px"></div>
     <div class="muted">
-      <strong>Lógica de prioridades (al asignar cada día):</strong>
-      1) Emparejamientos: <em>Rigo–Luceth</em>, <em>Adela–Mica</em> (si ambos cumplen su intervalo y no hay consecutivos).
-      2) Equilibrar <em>sábados</em>, <em>festivos/prefestivos</em> y <em>puentes</em> (se prioriza quien menos tenga).
-      3) Respetar intervalo mínimo entre guardias: 8→cada 4 días; 4→cada 8 días; 3→cada 10 días; 2→cada 15 días; Silvia 1/mes (~30 días).
-      4) Nunca dos días seguidos para la misma persona.
+      <strong>Reglas de asignación:</strong><br>
+      1) Emparejamientos preferidos: <em>Rigo–Luceth</em>, <em>Adela–Mica</em> (si ambos cumplen su intervalo y no hay días consecutivos).<br>
+      2) Equilibrar <em>sábados</em>, <em>festivos</em>, <em>prefestivos</em> y <em>puentes</em> (se prioriza quien menos tenga en el periodo).<br>
+      3) Respetar intervalo mínimo entre guardias: <br>
+         &nbsp;&nbsp;• 8 guardias/mes → cada 4 días<br>
+         &nbsp;&nbsp;• 4 guardias/mes → cada 8 días<br>
+         &nbsp;&nbsp;• 3 guardias/mes → cada 10 días<br>
+         &nbsp;&nbsp;• 2 guardias/mes → cada 15 días<br>
+         &nbsp;&nbsp;• Silvia → 2 guardias/mes (mínimo 12 días entre guardias)<br>
+      4) Nunca dos días seguidos para la misma persona.<br>
+      5) Puedes modificar el número de guardias/mes de cada médico y volver a generar el calendario.<br>
+      6) Los festivos se marcan con borde rojo.<br>
     </div>
   </div>
 
-  <!-- Calendarios -->
-  <div class="card">
-    <h3 style="margin:0 0 8px">Calendario (Oct 2025 → Jun 2026)</h3>
-    <div id="months" class="months"></div>
-  </div>
-
-  <!-- Resumen -->
+  <!-- Resumen antes del calendario -->
   <div class="card">
     <h3 style="margin:0 0 8px">Resumen del periodo</h3>
     <table>
@@ -80,6 +131,12 @@
       </thead>
       <tbody id="resumenBody"></tbody>
     </table>
+  </div>
+
+  <!-- Calendarios -->
+  <div class="card">
+    <h3 style="margin:0 0 8px">Calendario (Oct 2025 → Jun 2026)</h3>
+    <div id="months" class="months"></div>
   </div>
 </div>
 
@@ -193,11 +250,12 @@ function generarAsignacion(){
       const need = intervaloPorMes(guardiasMes);
       if(diff < need) return false; // respeta intervalo
     }
-    // Silvia: 1/mes
+    // Silvia: respeta el parámetro editable
     if(name==='Silvia'){
       const ym = ymd(dt).slice(0,7);
       monthCount[ym]=monthCount[ym]||{};
-      if((monthCount[ym][name]||0) >= 1) return false;
+      const max = MEDICOS.find(m=>m.nombre==='Silvia').mes;
+      if((monthCount[ym][name]||0) >= max) return false;
     }
     return true;
   }
@@ -394,6 +452,15 @@ function renderCalendario(asig){
 buildMonths();
 renderDoctors();
 document.getElementById('btnGenerar').addEventListener('click', ()=>{
+  // Actualiza los valores de guardias/mes desde los inputs ANTES de generar
+  const pills = document.querySelectorAll('#doctorsList .pill');
+  pills.forEach((div, idx) => {
+    const input = div.querySelector('input[type="number"]');
+    const val = Math.max(1,parseInt(input.value)||1);
+    MEDICOS[idx].mes = val;
+  });
+  // Recalcula todo
+  buildMonths();
   const asig = generarAsignacion();
   renderCalendario(asig);
 });

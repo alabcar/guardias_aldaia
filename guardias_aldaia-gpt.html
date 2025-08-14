@@ -22,8 +22,8 @@
   .mes-input{width:clamp(64px,8vw,90px);padding:6px 8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem}
 
   /* ===== Calendario responsive ===== */
-  .months{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
-  .month{width:auto;background:#fff;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(0,0,0,0.04)}
+  .months{display:grid;grid-template-columns:1fr;gap:16px}
+  .month{width:100%;background:#fff;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(0,0,0,0.04)}
   .month h3{margin:4px 0 8px;text-align:center;font-size:clamp(0.9rem,1vw,1rem)}
   .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:#ddd;padding:6px;border-radius:8px}
   .cell{background:#fff;min-height:clamp(58px,7.5vw,88px);padding:6px;font-size:clamp(0.72rem,0.9vw,0.82rem);display:flex;flex-direction:column;align-items:flex-start;border-radius:6px}
@@ -246,6 +246,7 @@ function generarAsignacion(){
       }
 
       function asentar(nombre){
+        if(asig[cell.iso].includes(nombre)) return; // evita duplicados mismo día
         asig[cell.iso].push(nombre);
         last[nombre]=new Date(cell.date);
         const ymKey = ym(cell.date);
