@@ -1,83 +1,3 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Guardias Aldaia 2025-2026</title>
-<style>
-  body {
-    font-family: 'Segoe UI', sans-serif;
-    background: #f9f9f9;
-    margin: 0;
-    padding: 1rem;
-    color: #222;
-  }
-  h2 { text-align: center; margin-bottom: 1rem; }
-  .container { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
-  .panel { background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 5px rgba(0,0,0,0.1); flex: 1; min-width: 280px; }
-  .panel h3 { margin-top: 0; }
-  .medico { display: flex; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
-  input[type=text], input[type=number] { padding: 2px 4px; font-size: 0.9rem; border: 1px solid #ccc; border-radius: 4px; width: auto; }
-  button { padding: 3px 6px; font-size: 0.85rem; border: none; border-radius: 4px; cursor: pointer; background: #0077cc; color: #fff; }
-  button:hover { background: #005fa3; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-  th, td { border: 1px solid #ccc; padding: 4px 6px; font-size: 0.75rem; text-align: center; }
-  th { background: #f0f0f0; }
-  #calendar { display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; margin-bottom: 2rem; }
-  .month { background: linear-gradient(135deg,#f7faff 80%,#e3e3e3 100%); padding: 1.2rem 0.8rem 1rem 0.8rem; border-radius: 16px; width: 340px; box-shadow: 0 2px 12px rgba(0,0,0,0.10); margin-bottom: 2rem; border: 2px solid #e0e7ef; }
-  .month h4 { text-align: center; margin: 0.7rem 0 1.2rem 0; font-size: 1.35rem; font-weight: 600; letter-spacing: 1px; color: #2a3a4a; }
-  .days {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
-    background: #e0e7ef;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 1.2rem;
-    min-width: 100%;
-  }
-  .day {
-    background: #fff;
-    padding: 8px 0 8px 0;
-    min-height: 62px;
-    font-size: 0.85rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    border-right: 1px solid #e0e7ef;
-    border-bottom: 1px solid #e0e7ef;
-    box-sizing: border-box;
-  }
-  .days .day:nth-child(7n) {
-    border-right: none;
-  }
-  .days .day:nth-last-child(-n+7) {
-    border-bottom: none;
-  }
-  .day span { font-size: 0.7rem; margin-top: 2px; display: block; }
-  .festivo { background: #ffdede; }
-  .puente { background: #ffe7cc; }
-  .prefestivo { background: #d0f0ff; }
-  .domingo { background: #e6e6e6; }
-  @media(max-width:800px){ .month{width:100%;} }
-</style>
-</head>
-<body>
-<h2>Guardias Centro de Salud Aldaia (Oct 2025 - Jun 2026)</h2>
-
-<div class="container">
-  <div class="panel" id="medicos-list">
-    <h3>Médicos</h3>
-  </div>
-  <div class="panel" id="resumen-list">
-    <h3>Resumen</h3>
-  </div>
-</div>
-
-<div id="calendar"></div>
-
-<script>
 // --- CONFIGURACIÓN ---
 let medicos = [
   { nombre: 'Adela', minGuardias: 8, maxGuardias: 8 },
@@ -98,18 +18,15 @@ let medicos = [
   { nombre: 'Lerma', minGuardias: 2, maxGuardias: 2 }
 ];
 
-// Colores pastel para cada médico
 let colores = ["#FFB3BA","#FFDFBA","#FFFFBA","#BAFFC9","#BAE1FF","#E3BAFF","#FFC2DE","#C2FFC2","#B3E0FF","#FFDEBA","#FFBFB3","#BAFFD9","#C2BAFF","#FFBAF2","#BAFFD4","#FFD8BA"];
-
 let festivos = [
   '2025-10-09','2025-11-01','2025-12-06','2025-12-08','2025-12-25',
   '2026-01-01','2026-01-06','2026-03-19','2026-03-29','2026-04-02','2026-04-03','2026-04-06','2026-05-01','2026-08-15'
 ];
-
 let numMedicosPorDia = 2;
 let guardiasAsignadas = {};
+let guardiasManual = {};
 
-// --- UTILIDADES ---
 function getFestivoPuente(year, month, day) {
   const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   if (festivos.includes(dateStr)) return 'festivo';
@@ -133,7 +50,6 @@ function getDiasMes(year, month) {
   return dias;
 }
 
-// --- DISTRIBUCIÓN ---
 function distribuirGuardias() {
   guardiasAsignadas = {};
   for(let y=2025; y<=2026; y++) {
@@ -141,7 +57,6 @@ function distribuirGuardias() {
     let endMonth = (y===2026)?5:11;
     for(let m=startMonth;m<=endMonth;m++) {
       const diasMes = getDiasMes(y,m);
-      // Clasificar días según prioridad
       let diasPrioridad = [[],[],[],[],[]]; // sábados, festivos, prefestivos, lunes, resto
       diasMes.forEach(dia => {
         if(dia.dayOfWeek===6) diasPrioridad[0].push(dia); // Sábado
@@ -150,43 +65,46 @@ function distribuirGuardias() {
         else if(dia.dayOfWeek===1) diasPrioridad[3].push(dia); // Lunes
         else diasPrioridad[4].push(dia);
       });
-      // Inicializar contadores mensuales
       let contadores = medicos.map((m,idx)=>{
         let min = m.minGuardias;
         let max = m.maxGuardias;
         if(min === 8) { min = 8; max = 9; }
         return {nombre:m.nombre, guardias:0, min, max, color: colores[idx%colores.length]};
       });
+      let totalGuardias = diasMes.length * numMedicosPorDia;
+      let sumaMaximos = contadores.reduce((acc,c)=>acc+c.max,0);
+      if(sumaMaximos > totalGuardias) {
+        let exceso = sumaMaximos - totalGuardias;
+        let noContratados = contadores.filter(c=>c.min!==8);
+        while(exceso > 0 && noContratados.length > 0) {
+          noContratados.sort((a,b)=>b.max-a.max);
+          let c = noContratados[0];
+          if(c.max > c.min) { c.max--; exceso--; }
+          else { noContratados.shift(); }
+        }
+      }
       let libres = {}; medicos.forEach(m=>libres[m.nombre]=false);
-
       // 1. Repartir festivos equitativamente entre médicos contratados (min 8)
       let festivosDias = diasPrioridad[1];
       let medicosContratados = contadores.filter(c=>c.min===8);
-      let festivosPorMedico = Math.floor(festivosDias.length / medicosContratados.length);
-      let restoFestivos = festivosDias.length % medicosContratados.length;
-      let festivosAsignados = {};
-      medicosContratados.forEach(m=>festivosAsignados[m.nombre]=0);
       let festivoIdx = 0;
       for(const dia of festivosDias){
-        // Asignar festivos de forma rotativa y equitativa
-        let medico = medicosContratados[festivoIdx % medicosContratados.length];
         const fechaStr = `${dia.year}-${String(dia.month+1).padStart(2,'0')}-${String(dia.day).padStart(2,'0')}`;
+        if(guardiasManual[fechaStr]) continue;
+        let medico = medicosContratados[festivoIdx % medicosContratados.length];
         guardiasAsignadas[fechaStr] = [medico.nombre];
         medico.guardias++;
-        festivosAsignados[medico.nombre]++;
         festivoIdx++;
       }
-
       // 2. Reparto por prioridad para el resto de días
       for(let p=0;p<diasPrioridad.length;p++){
-        // Saltar festivos ya asignados
         if(p===1) continue;
         for(const dia of diasPrioridad[p]){
           const fechaStr = `${dia.year}-${String(dia.month+1).padStart(2,'0')}-${String(dia.day).padStart(2,'0')}`;
+          if(guardiasManual[fechaStr]) continue;
           guardiasAsignadas[fechaStr] = guardiasAsignadas[fechaStr] || [];
           let asignados = [];
           let candidatos = contadores.filter(c=>c.guardias<c.max && !libres[c.nombre]);
-          // Priorizar los que no han llegado al mínimo
           candidatos.sort((a,b)=>{
             const aNecesita = a.guardias<a.min?-1:1;
             const bNecesita = b.guardias<b.min?-1:1;
@@ -196,7 +114,6 @@ function distribuirGuardias() {
           for(let i=0;i<numMedicosPorDia;i++){
             if(candidatos.length===0) break;
             let elegido = candidatos[0];
-            // Evitar duplicados en festivos
             if(guardiasAsignadas[fechaStr].includes(elegido.nombre)) continue;
             asignados.push(elegido.nombre);
             elegido.guardias++;
@@ -218,7 +135,19 @@ function distribuirGuardias() {
   }
 }
 
-// --- INTERFAZ ---
+window.actualizarGuardiasManual = function(fecha, selectElem) {
+  const seleccionados = Array.from(selectElem.selectedOptions).map(opt=>opt.value);
+  guardiasManual[fecha] = seleccionados;
+  renderResumen();
+}
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('generar-guardias').onclick = function() {
+    distribuirGuardias();
+    renderResumen();
+    renderYearCalendar();
+  }
+});
+
 function renderMedicosList() {
   const container=document.getElementById('medicos-list');
   container.innerHTML='<h3>Médicos</h3>';
@@ -243,13 +172,12 @@ function renderMedicosList() {
   container.appendChild(btnAdd);
 }
 
-// --- RESUMEN EN TABLA ---
 function renderResumen() {
   distribuirGuardias();
   const resumen={};
   medicos.forEach((m,idx)=>resumen[m.nombre]={color:colores[idx%colores.length],total:0,lunes:0,martes:0,miercoles:0,jueves:0,viernes:0,sabado:0,domingo:0,festivo:0,puente:0,prefestivo:0});
   Object.keys(guardiasAsignadas).forEach(fechaStr=>{
-    const guardias=guardiasAsignadas[fechaStr];
+    const guardias=guardiasManual[fechaStr] ? guardiasManual[fechaStr] : guardiasAsignadas[fechaStr];
     const [year,month,day]=fechaStr.split('-').map(Number);
     const date=new Date(year,month-1,day);
     const dayOfWeek=date.getDay();
@@ -284,7 +212,6 @@ function renderResumen() {
   container.appendChild(table);
 }
 
-// --- CALENDARIO ---
 function renderYearCalendar() {
   const container=document.getElementById('calendar');
   container.innerHTML='';
@@ -296,16 +223,13 @@ function renderYearCalendar() {
       const mesDiv=document.createElement('div'); mesDiv.className='month';
       mesDiv.innerHTML=`<h4>${dias[0].date.toLocaleString('es-ES',{month:'long', year:'numeric'})}</h4>`;
       const grid=document.createElement('div'); grid.className='days';
-      // Encabezado lunes a domingo
       ['L','M','X','J','V','S','D'].forEach(weekday=>{ 
         const wDiv=document.createElement('div'); 
         wDiv.style.fontWeight='bold'; wDiv.style.textAlign='center'; 
         wDiv.textContent=weekday; 
         grid.appendChild(wDiv); 
       });
-      // Calcular el primer día del mes (0=domingo, 1=lunes...)
       const firstDay = dias[0].date.getDay();
-      // Ajustar para que el mes empiece en lunes
       let offset = (firstDay === 0) ? 6 : firstDay - 1;
       for(let i=0;i<offset;i++){
         const emptyDiv=document.createElement('div'); emptyDiv.className='day'; emptyDiv.innerHTML=''; grid.appendChild(emptyDiv);
@@ -316,32 +240,36 @@ function renderYearCalendar() {
         if(dia.festPuente==='puente') dayDiv.classList.add('puente');
         if(dia.dayOfWeek===0) dayDiv.classList.add('domingo');
         const fechaStr=`${dia.year}-${String(dia.month+1).padStart(2,'0')}-${String(dia.day).padStart(2,'0')}`;
-        let innerHTML=`${dia.day}<span>`;
-        guardiasAsignadas[fechaStr].forEach(nombre=>{
-          const idx = medicos.findIndex(m=>m.nombre===nombre);
-          const color = colores[idx%colores.length];
-          innerHTML+=`<span style="background:${color};padding:1px 2px;border-radius:3px;margin:1px;display:inline-block;">${nombre}</span>`;
+        let guardias = guardiasManual[fechaStr] ? guardiasManual[fechaStr] : guardiasAsignadas[fechaStr];
+        let innerHTML = `${dia.day}<span>`;
+        guardias.forEach((nombre, idx) => {
+          const color = colores[medicos.findIndex(m=>m.nombre===nombre)%colores.length];
+          innerHTML += `<span style="background:${color};padding:1px 2px;border-radius:3px;margin:1px;display:inline-block;">${nombre}</span>`;
         });
-        innerHTML+='</span>';
-        dayDiv.innerHTML=innerHTML;
+        innerHTML += '</span>';
+        innerHTML += `<br><select multiple style='width:90%;margin-top:2px;' onchange='actualizarGuardiasManual("${fechaStr}", this)'>`;
+        medicos.forEach((m, idx) => {
+          const selected = guardias.includes(m.nombre) ? 'selected' : '';
+          innerHTML += `<option value="${m.nombre}" style="background:${colores[idx%colores.length]};" ${selected}>${m.nombre}</option>`;
+        });
+        innerHTML += '</select>';
+        dayDiv.innerHTML = innerHTML;
         grid.appendChild(dayDiv);
       });
-      // Rellenar hasta 42 días (6 filas de 7 días)
       let totalCeldas = offset + dias.length;
       for(let i=totalCeldas;i<42;i++){
         const emptyDiv=document.createElement('div'); emptyDiv.className='day'; emptyDiv.innerHTML=''; grid.appendChild(emptyDiv);
       }
       mesDiv.appendChild(grid);
-
-      // Resumen mensual de guardias por médico
       const resumenMes = {};
       medicos.forEach((m, idx) => {
         resumenMes[m.nombre] = { total: 0, color: colores[idx % colores.length] };
       });
       dias.forEach(dia => {
         const fechaStr = `${dia.year}-${String(dia.month+1).padStart(2,'0')}-${String(dia.day).padStart(2,'0')}`;
-        if (guardiasAsignadas[fechaStr]) {
-          guardiasAsignadas[fechaStr].forEach(nombre => {
+        let guardias = guardiasManual[fechaStr] ? guardiasManual[fechaStr] : guardiasAsignadas[fechaStr];
+        if (guardias) {
+          guardias.forEach(nombre => {
             if (resumenMes[nombre]) resumenMes[nombre].total++;
           });
         }
@@ -362,10 +290,8 @@ function renderYearCalendar() {
   }
 }
 
-// --- INICIAL ---
-renderMedicosList();
-renderResumen();
-renderYearCalendar();
-</script>
-</body>
-</html>
+document.addEventListener('DOMContentLoaded', function() {
+  renderMedicosList();
+  renderResumen();
+  renderYearCalendar();
+});

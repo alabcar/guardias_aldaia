@@ -1,0 +1,56 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f9f9f9;
+  margin: 0;
+  padding: 1rem;
+  color: #222;
+}
+h2 { text-align: center; margin-bottom: 1rem; }
+.container { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+.panel { background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 5px rgba(0,0,0,0.1); flex: 1; min-width: 280px; }
+.panel h3 { margin-top: 0; }
+.medico { display: flex; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
+input[type=text], input[type=number] { padding: 2px 4px; font-size: 0.9rem; border: 1px solid #ccc; border-radius: 4px; width: auto; }
+button { padding: 3px 6px; font-size: 0.85rem; border: none; border-radius: 4px; cursor: pointer; background: #0077cc; color: #fff; }
+button:hover { background: #005fa3; }
+table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+th, td { border: 1px solid #ccc; padding: 4px 6px; font-size: 0.75rem; text-align: center; }
+th { background: #f0f0f0; }
+#calendar { display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; margin-bottom: 2rem; }
+.month { background: linear-gradient(135deg,#f7faff 80%,#e3e3e3 100%); padding: 1.2rem 0.8rem 1rem 0.8rem; border-radius: 16px; width: 340px; box-shadow: 0 2px 12px rgba(0,0,0,0.10); margin-bottom: 2rem; border: 2px solid #e0e7ef; }
+.month h4 { text-align: center; margin: 0.7rem 0 1.2rem 0; font-size: 1.35rem; font-weight: 600; letter-spacing: 1px; color: #2a3a4a; }
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  background: #e0e7ef;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 1.2rem;
+  min-width: 100%;
+}
+.day {
+  background: #fff;
+  padding: 8px 0 8px 0;
+  min-height: 62px;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  border-right: 1px solid #e0e7ef;
+  border-bottom: 1px solid #e0e7ef;
+  box-sizing: border-box;
+}
+.days .day:nth-child(7n) {
+  border-right: none;
+}
+.days .day:nth-last-child(-n+7) {
+  border-bottom: none;
+}
+.day span { font-size: 0.7rem; margin-top: 2px; display: block; }
+.festivo { background: #ffdede; }
+.puente { background: #ffe7cc; }
+.prefestivo { background: #d0f0ff; }
+.domingo { background: #e6e6e6; }
+@media(max-width:800px){ .month{width:100%;} }
