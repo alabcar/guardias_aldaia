@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Guardias Aldaia — Oct 2025 → Jun 2026</title>
+<style>
+  :root{--bg:#f6f8fa;--card:#fff;--muted:#666}
+  body{background:var(--bg);font-family:Inter,Segoe UI,Arial,sans-serif;color:#111;margin:0}
+  .wrap{max-width:1200px;margin:20px auto;padding:18px}
+  header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
+  h1{margin:0;font-size:1.15rem}
+  .top-actions{display:flex;gap:8px}
+  button{background:#0b74de;color:#fff;border:0;padding:8px 10px;border-radius:8px;cursor:pointer}
+  button.ghost{background:#fff;border:1px solid #ddd;color:#111}
+  .layout{display:grid;grid-template-columns:340px 1fr;gap:14px;margin-top:16px}
+  @media(max-width:950px){ .layout{grid-template-columns:1fr} }
+  .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+  .med-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .med-row{display:flex;gap:8px;align-items:center}
+  .med-row input[type="text"]{flex:1;padding:8px;border-radius:8px;border:1px solid #e7e7e7}
+  .med-row input[type="number"]{width:80px;padding:8px;border-radius:8px;border:1px solid #e7e7e7}
+  .small{font-size:0.86rem;color:var(--muted)}
+  .months{display:block;width:100%;}
+  .month{width:100%;background:#fff;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(0,0,0,0.04);margin-bottom:18px;}
+  .month h3{margin:4px 0 8px;text-align:center;font-size:0.95rem}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:#ddd;padding:6px;border-radius:8px;width:100%;min-width:320px;}
+  .cell{background:#fff;min-height:72px;padding:6px;font-size:0.78rem;display:flex;flex-direction:column;align-items:flex-start;border-radius:6px;position:relative}
+  .cell.empty{background:transparent;min-height:36px;border:none}
+  .cell .date{font-weight:700;margin-bottom:6px}
+  .guard-tag{display:inline-block;padding:3px 6px;border-radius:8px;margin:3px 0;font-size:0.72rem;width:100%;box-sizing:border-box}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .legend .item{display:flex;gap:8px;align-items:center;font-size:0.85rem}
+  .color-swatch{width:18px;height:12px;border-radius:4px;display:inline-block}
+  table.resumen{width:100%;border-collapse:collapse;margin-top:10px}
+  table.resumen th, table.resumen td{border:1px solid #eee;padding:6px;font-size:0.82rem;text-align:center}
+  table.resumen th{background:#fafafa}
+  .note{color:#b00;font-size:0.85rem}
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:50}
+  .modal{background:#fff;padding:12px;border-radius:10px;min-width:320px}
+  .modal h4{margin:0 0 8px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  select,input{padding:8px;border-radius:8px;border:1px solid #e7e7e7}
+  .controls{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .muted{color:var(--muted);font-size:0.9rem}
+  /* day types */
+  .type-festivo{background:#ffecec}
+  .type-puente{background:#fff2dc}
+  .type-prefestivo{background:#e6f4ff}
+  .type-sabado{background:#fff8f0}
+  .type-domingo{background:#f0f0f0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Guardias Aldaia — Oct 2025 → Jun 2026</h1>
+    <div class="top-actions">
+      <button id="autoFill">Rellenar automáticamente</button>
+      <button id="clearManual" class="ghost">Quitar manuales</button>
+      <button id="exportCsv" class="ghost">Exportar CSV</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- Left panel -->
+    <div class="card">
+      <h3>Médicos (editable)</h3>
+      <div class="small">Edita nombre y guardias/mes. Añade o elimina médicos.</div>
+      <div id="medList" class="med-list"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;justify-content:space-between">
+        <button id="addMed">Añadir médico</button>
+        <div class="small">Periodo: <strong>Oct‑2025 → Jun‑2026</strong> (9 meses)</div>
+      </div>
+
+      <div style="height:12px"></div>
+      <div class="small">Leyenda y colores:</div>
+      <div id="legend" class="legend"></div>
+      <div style="height:6px"></div>
+      <div class="small">Tipos: <span style="display:inline-block;margin-left:6px"> <span style="background:#ffecec;padding:3px 6px;border-radius:4px">Festivo</span> <span style="background:#fff2dc;padding:3px 6px;border-radius:4px;margin-left:8px">Puente</span> <span style="background:#e6f4ff;padding:3px 6px;border-radius:4px;margin-left:8px">Prefest.</span> <span style="background:#fff8f0;padding:3px 6px;border-radius:4px;margin-left:8px">Sáb.</span></span></div>
+    </div>
+
+    <!-- Right: calendar + resumen -->
+    <div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <h3 style="margin:0">Calendarios</h3>
+          <div class="muted">Haz clic en una celda para asignar/retirar manualmente</div>
+        </div>
+        <div id="months" class="months" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <h3 style="margin:0 0 8px">Resumen (Oct‑2025 → Jun‑2026)</h3>
+        <div class="muted">Totales del periodo — 9 meses</div>
+        <table class="resumen" id="tablaResumen">
+          <thead>
+            <tr><th>Médico</th><th>Total</th><th>L</th><th>M</th><th>X</th><th>J</th><th>V</th><th>S</th><th>D</th><th>Fest.</th><th>Puente</th><th>Prefest.</th><th>Notas</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- modal root -->
+<div id="modalRoot" style="display:none"></div>
+
+<script>
+/* ------------- Datos precargados ------------- */
+const medicosInit = [
+  { nombre: 'Adela', min:8, max:8 },
+  { nombre: 'Rigo', min:8, max:8 },
+  { nombre: 'Merino', min:8, max:8 },
+  { nombre: 'Mica', min:4, max:4 },
+  { nombre: 'Naby', min:4, max:4 },
+  { nombre: 'Estrella', min:4, max:4 },
+  { nombre: 'Amparo', min:4, max:4 },
+  { nombre: 'Sara', min:4, max:4 },
+  { nombre: 'Luceth', min:4, max:4 },
+  { nombre: 'Salva', min:3, max:3 },
+  { nombre: 'Brian', min:2, max:2 },
+  { nombre: 'Marta', min:2, max:2 },
+  { nombre: 'Julia', min:2, max:2 },
+  { nombre: 'Pepe', min:2, max:2 },
+  { nombre: 'Wendy', min:2, max:2 },
+  { nombre: 'Lerma', min:2, max:2 }
+];
+
+// Colores pastel (asignados por índice)
+const pastel = ["#FFB3BA","#FFDFBA","#FFFFBA","#BAFFC9","#BAE1FF","#D7BAFF","#FFC8DD","#BFD8B8","#FFDAC1","#E2F0CB","#FF9CEE","#F0C9FF","#B5EAD7","#C7CEEA","#FFCCF9","#C2F0FC"];
+
+// Festivos Comunidad Valenciana (ejemplos relevantes 2025-2026 entre octubre y junio)
+// Puedes editar aquí si hace falta.
+const festivosSet = new Set([
+  '2025-10-09','2025-11-01','2025-12-06','2025-12-08','2025-12-25',
+  '2026-01-01','2026-01-06','2026-03-19','2026-03-29','2026-04-02','2026-04-03','2026-04-06','2026-05-01'
+]);
+
+/* ------------- Estado ------------- */
+const start = { year:2025, month:9 }; // October (0-based month idx)
+const end = { year:2026, month:5 };   // June
+let doctors = []; // working doctors
+let monthsList = []; // months with days
+let assignments = {}; // 'YYYY-MM-DD' => { names: [], manual: [] }
+let stats = {}; // per doctor stats across full period
+let notesGlobal = {}; // notes about incidences
+
+/* ------------- util fechas ------------- */
+function pad(n){ return n<10 ? '0'+n : ''+n; }
+function iso(y,m,d){ return `${y}-${pad(m)}-${pad(d)}`; } // m:1..12
+function isoFromDate(dt){ return iso(dt.getFullYear(), dt.getMonth()+1, dt.getDate()); }
+function parseIso(s){ return new Date(s + 'T00:00:00'); }
+function addDays(d,n){ const D = new Date(d); D.setDate(D.getDate()+n); return D; }
+
+/* ------------- construir meses y días (mon..sun grid) ------------- */
+function buildMonths(){
+  monthsList = [];
+  let y = start.year, m = start.month;
+  while(y < end.year || (y===end.year && m<=end.month)){
+    const first = new Date(y,m,1);
+    const last = new Date(y,m+1,0).getDate();
+    const days = [];
+    const firstWeekdayMonday0 = (first.getDay()+6)%7; // Monday=0
+    // leading empty
+    for(let i=0;i<firstWeekdayMonday0;i++) days.push({ empty:true });
+    for(let d=1; d<=last; d++){
+      const dt = new Date(y,m,d);
+      const isoS = isoFromDate(dt);
+      const dow = dt.getDay(); // 0 Sun .. 6 Sat
+      const isFest = festivosSet.has(isoS);
+      const prevIso = iso(y,m+1,d-1);
+      const nextIso = iso(y,m+1,d+1);
+      const isPuente = festivosSet.has(prevIso) || festivosSet.has(nextIso);
+      const isPref = festivosSet.has(nextIso);
+      days.push({ empty:false, date:dt, iso:isoS, d, dow, isFest, isPuente, isPref });
+    }
+    while(days.length % 7 !== 0) days.push({ empty:true });
+    monthsList.push({ year:y, month:m, days });
+    m++; if(m>11){ m=0; y++; }
+  }
+}
+
+/* ------------- init / reset assignments ------------- */
+function initState(){
+  doctors = medicosInit.map((m,i)=>({ nombre:m.nombre, min:m.min, max:m.max, color: pastel[i % pastel.length], id:i }));
+  buildMonths();
+  assignments = {};
+  for(const mon of monthsList){
+    for(const cell of mon.days){
+      if(cell.empty) continue;
+      assignments[cell.iso] = { names: [], manual: [] };
+    }
+  }
+  stats = {};
+  doctors.forEach(d=> stats[d.nombre] = { total:0, byDay:{0:0,1:0,2:0,3:0,4:0,5:0,6:0}, byType:{sab:0,fest:0,pref:0,puente:0,resto:0} });
+  notesGlobal = {};
+  renderDoctors();
+  renderLegend();
+  renderMonths();
+  renderResumen();
+}
+
+/* ------------- render Doctors & Legend ------------- */
+const medListEl = document.getElementById('medList');
+const legendEl = document.getElementById('legend');
+function renderDoctors(){
+  medListEl.innerHTML = '';
+  doctors.forEach((d, idx)=>{
+    const row = document.createElement('div'); row.className='med-row';
+    const sw = document.createElement('span'); sw.className='color-swatch'; sw.style.background=d.color;
+    const inp = document.createElement('input'); inp.type='text'; inp.value = d.nombre;
+    inp.addEventListener('change', e=>{ d.nombre = e.target.value; renderMonths(); renderResumen(); renderLegend(); });
+    const num = document.createElement('input'); num.type='number'; num.value = d.min; num.min = 0;
+    num.addEventListener('change', e=>{ d.min = Math.max(0, parseInt(e.target.value)||0); d.max = d.min; });
+    const del = document.createElement('button'); del.textContent='Eliminar'; del.style.background='#e74c3c';
+    del.addEventListener('click', ()=>{
+      if(!confirm('Eliminar '+d.nombre+'?')) return;
+      doctors.splice(idx,1);
+      // rebuild (reassign colors and reset)
+      initState();
+    });
+    row.append(sw, inp, num, del);
+    medListEl.appendChild(row);
+  });
+}
+function renderLegend(){
+  legendEl.innerHTML = '';
+  doctors.forEach(d=>{
+    const it = document.createElement('div'); it.className='item small';
+    const sw = document.createElement('span'); sw.className='color-swatch'; sw.style.background=d.color;
+    it.append(sw, document.createTextNode(' '+d.nombre));
+    legendEl.appendChild(it);
+  });
+}
+
+/* ------------- render months (grid mon..sun) ------------- */
+const monthsEl = document.getElementById('months');
+function renderMonths(){
+  monthsEl.innerHTML = '';
+  for(const mon of monthsList){
+    const mdiv = document.createElement('div'); mdiv.className='month card';
+    const label = new Date(mon.year, mon.month, 1).toLocaleString('es-ES',{month:'long', year:'numeric'});
+    const title = document.createElement('h3'); title.textContent = label;
+    mdiv.appendChild(title);
+    const grid = document.createElement('div'); grid.className='grid';
+    // headers: Mon..Sun (L..D)
+    ['L','M','X','J','V','S','D'].forEach(h=>{
+      const hd = document.createElement('div'); hd.className='cell'; hd.style.fontWeight='700'; hd.style.textAlign='center'; hd.textContent=h;
+      grid.appendChild(hd);
+    });
+    for(const cell of mon.days){
+      const c = document.createElement('div'); c.className='cell';
+      if(cell.empty){ c.classList.add('empty'); grid.appendChild(c); continue; }
+      // apply types styles
+      if(cell.isFest) c.classList.add('type-festivo');
+      else if(cell.isPref) c.classList.add('type-prefestivo');
+      else if(cell.isPuente) c.classList.add('type-puente');
+      if(cell.dow===6) c.classList.add('type-sabado');
+      if(cell.dow===0) c.classList.add('type-domingo');
+
+      const dateSpan = document.createElement('div'); dateSpan.className='date'; dateSpan.textContent = cell.d;
+      c.appendChild(dateSpan);
+
+      // show assigned tags
+      const a = assignments[cell.iso] ? assignments[cell.iso].names : [];
+      if(a && a.length){
+        a.forEach(name=>{
+          const tag = document.createElement('div'); tag.className='guard-tag';
+          const idx = doctors.findIndex(dd=>dd.nombre===name);
+          tag.style.background = idx>=0 ? doctors[idx].color : '#ddd';
+          tag.textContent = name + (assignments[cell.iso].manual.includes(name) ? ' •' : '');
+          c.appendChild(tag);
+        });
+      } else {
+        const hint = document.createElement('div'); hint.className='small muted'; hint.style.marginTop='8px'; hint.textContent='(vacío)';
+        c.appendChild(hint);
+      }
+
+      // click to modal assign
+      c.style.cursor = 'pointer';
+      c.addEventListener('click', ()=> openAssignModal(cell.iso));
+      grid.appendChild(c);
+    }
+    mdiv.appendChild(grid);
+    monthsEl.appendChild(mdiv);
+  }
+}
+
+/* ------------- modal assign ------------- */
+const modalRoot = document.getElementById('modalRoot');
+function openAssignModal(isoKey){
+  modalRoot.innerHTML=''; modalRoot.style.display='block';
+  const back = document.createElement('div'); back.className='modal-back';
+  const box = document.createElement('div'); box.className='modal';
+  const title = document.createElement('h4'); title.textContent = 'Asignaciones — ' + isoKey;
+  const selRow = document.createElement('div'); selRow.className='row';
+  const sel = document.createElement('select');
+  const optEmpty = document.createElement('option'); optEmpty.value=''; optEmpty.textContent='-- seleccionar médico --';
+  sel.appendChild(optEmpty);
+  doctors.forEach(d=>{ const o=document.createElement('option'); o.value=d.nombre; o.textContent=d.nombre; sel.appendChild(o); });
+
+  const btnAdd = document.createElement('button'); btnAdd.textContent='Añadir (manual)';
+  btnAdd.addEventListener('click', ()=>{
+    const val = sel.value; if(!val) return;
+    // max 2 assigned
+    if(assignments[isoKey].names.includes(val)) return alert('Ya asignado.');
+    if(assignments[isoKey].names.length >= 2) return alert('Ya hay 2 asignados.');
+    // check adjacency (strict rule: no consecutive)
+    const dt = parseIso(isoKey);
+    const prev = iso(dt.getFullYear(), dt.getMonth()+1, dt.getDate()-1);
+    const next = iso(dt.getFullYear(), dt.getMonth()+1, dt.getDate()+1);
+    if((assignments[prev] && assignments[prev].names.includes(val)) || (assignments[next] && assignments[next].names.includes(val))){
+      return alert('No se permiten guardias en días consecutivos (manual). Quita la guardia adyacente primero.');
+    }
+    assignments[isoKey].names.push(val);
+    assignments[isoKey].manual.push(val);
+    closeModal(); recomputeAndRender();
+  });
+
+  const btnClear = document.createElement('button'); btnClear.textContent='Quitar asignaciones'; btnClear.style.background='#e66';
+  btnClear.addEventListener('click', ()=>{
+    assignments[isoKey].names = []; assignments[isoKey].manual = [];
+    closeModal(); recomputeAndRender();
+  });
+
+  const btnClose = document.createElement('button'); btnClose.textContent='Cerrar'; btnClose.style.background='#777';
+  btnClose.addEventListener('click', ()=> closeModal());
+
+  selRow.appendChild(sel); selRow.appendChild(btnAdd);
+  box.appendChild(title); box.appendChild(selRow);
+  box.appendChild(document.createElement('hr'));
+  const cur = document.createElement('div'); cur.className='small'; cur.style.marginTop='6px';
+  cur.textContent = 'Asignados: ' + (assignments[isoKey].names.length ? assignments[isoKey].names.join(', ') : '(vacío)');
+  box.appendChild(cur);
+  const brow = document.createElement('div'); brow.className='row'; brow.style.marginTop='8px';
+  brow.appendChild(btnClear); brow.appendChild(btnClose);
+  box.appendChild(brow);
+  back.appendChild(box); modalRoot.appendChild(back);
+}
+function closeModal(){ modalRoot.style.display='none'; modalRoot.innerHTML=''; }
+
+/* ------------- AutoFill algorithm (per month) ------------- */
+function autoFill(){
+  notesGlobal = {};
+  // reset stats counters
+  Object.keys(stats).forEach(k=>{
+    stats[k].total = 0;
+    stats[k].byDay = {0:0,1:0,2:0,3:0,4:0,5:0,6:0};
+    stats[k].byType = { sab:0, fest:0, pref:0, puente:0, resto:0 };
+  });
+  // preserve manual assignments, clear non-manual
+  for(const key in assignments){
+    if(assignments[key].manual && assignments[key].manual.length){
+      assignments[key].names = [...assignments[key].manual];
+    } else {
+      assignments[key].names = [];
+      assignments[key].manual = [];
+    }
+  }
+
+  // helper: adjacency check
+  function hasAdj(name, isoKey){
+    const d = parseIso(isoKey);
+    const prev = iso(d.getFullYear(), d.getMonth()+1, d.getDate()-1);
+    const next = iso(d.getFullYear(), d.getMonth()+1, d.getDate()+1);
+    if(assignments[prev] && assignments[prev].names.includes(name)) return true;
+    if(assignments[next] && assignments[next].names.includes(name)) return true;
+    return false;
+  }
+
+  // For each month in chronological order
+  for(const mon of monthsList){
+    // compute monthly quotas per doctor (min values)
+    const quotas = {}; doctors.forEach(d=>quotas[d.nombre] = d.min);
+
+    // subtract manual assignments in this month
+    for(const cell of mon.days){
+      if(cell.empty) continue;
+      const key = cell.iso;
+      const asg = assignments[key].names || [];
+      asg.forEach(n=>{
+        if(quotas[n] !== undefined) quotas[n] = Math.max(0, quotas[n]-1);
+        // update stats for manual now
+        stats[n].total++;
+        stats[n].byDay[cell.dow] = (stats[n].byDay[cell.dow]||0) + 1;
+        if(cell.dow===6) stats[n].byType.sab++;
+        else if(cell.isFest) stats[n].byType.fest++;
+        else if(cell.isPref) stats[n].byType.pref++;
+        else if(cell.isPuente) stats[n].byType.puente++;
+        else stats[n].byType.resto++;
+      });
+    }
+
+    // list unassigned days grouped by priority
+    const lists = { sab:[], fest:[], pref:[], puente:[], mon:[], resto:[] };
+    for(const cell of mon.days){
+      if(cell.empty) continue;
+      const key = cell.iso;
+      if(assignments[key].names && assignments[key].names.length) continue; // already assigned
+      if(cell.dow===6) lists.sab.push(cell);
+      else if(cell.isFest) lists.fest.push(cell);
+      else if(cell.isPref) lists.pref.push(cell);
+      else if(cell.isPuente) lists.puente.push(cell);
+      else if(cell.dow===1) lists.mon.push(cell);
+      else lists.resto.push(cell);
+    }
+
+    // candidate selection function for a cell
+    function pickForCell(cell){
+      // candidates: docs with quota>0 and no adjacency
+      let cand = doctors.filter(d=> quotas[d.nombre] > 0 && !hasAdj(d.nombre, cell.iso));
+      if(cand.length === 0){
+        // relax adjacency if absolutely needed: allow candidates with quota but adjacency -> won't pick if adjacency causes two consecutive for same doc (we checked), but we allow if no other choice
+        cand = doctors.filter(d=> quotas[d.nombre] > 0);
+      }
+      if(cand.length === 0) return null;
+      // sort by how many of this type they already have (prefer lowest), tie-breaker: total assigned so far
+      cand.sort((a,b)=>{
+        const sa = stats[a.nombre].byType;
+        const sb = stats[b.nombre].byType;
+        let aCount=0,bCount=0;
+        if(cell.dow===6){ aCount=sa.sab; bCount=sb.sab; }
+        else if(cell.isFest){ aCount=sa.fest; bCount=sb.fest; }
+        else if(cell.isPref){ aCount=sa.pref; bCount=sb.pref; }
+        else if(cell.isPuente){ aCount=sa.puente; bCount=sb.puente; }
+        else if(cell.dow===1){ aCount=sa.mon||0; bCount=sb.mon||0; }
+        else { aCount=sa.resto; bCount=sb.resto; }
+        if(aCount !== bCount) return aCount - bCount;
+        if(stats[a.nombre].total !== stats[b.nombre].total) return stats[a.nombre].total - stats[b.nombre].total;
+        return a.nombre.localeCompare(b.nombre);
+      });
+      return cand[0];
+    }
+
+    // assign per priority
+    const order = ['sab','fest','pref','puente','mon','resto'];
+    for(const typ of order){
+      for(const cell of lists[typ]){
+        const key = cell.iso;
+        if(!assignments[key]) assignments[key] = { names: [], manual: [] };
+        while(assignments[key].names.length < 2){
+          const chosen = pickForCell(cell);
+          if(!chosen) break;
+          // assign
+          assignments[key].names.push(chosen.nombre);
+          quotas[chosen.nombre] = Math.max(0, quotas[chosen.nombre]-1);
+          stats[chosen.nombre].total++;
+          stats[chosen.nombre].byDay[cell.dow] = (stats[chosen.nombre].byDay[cell.dow] || 0) + 1;
+          if(cell.dow===6) stats[chosen.nombre].byType.sab++;
+          else if(cell.isFest) stats[chosen.nombre].byType.fest++;
+          else if(cell.isPref) stats[chosen.nombre].byType.pref++;
+          else if(cell.isPuente) stats[chosen.nombre].byType.puente++;
+          else stats[chosen.nombre].byType.resto++;
+        }
+      }
+    }
+
+    // try to fill remaining quotas from remaining days (relaxing ties)
+    const remainingDays = mon.days.filter(c=>!c.empty && assignments[c.iso].names.length < 2);
+    for(const docName of Object.keys(quotas)){
+      let need = quotas[docName];
+      if(need <= 0) continue;
+      for(const cell of remainingDays){
+        if(need<=0) break;
+        const key = cell.iso;
+        if(assignments[key].names.length >= 2) continue;
+        // check adjacency
+        if(hasAdj(docName, key)) continue;
+        // assign
+        assignments[key].names.push(docName);
+        quotas[docName]--; need--;
+        stats[docName].total++;
+        stats[docName].byDay[cell.dow] = (stats[docName].byDay[cell.dow] || 0) + 1;
+        if(cell.dow===6) stats[docName].byType.sab++;
+        else if(cell.isFest) stats[docName].byType.fest++;
+        else if(cell.isPref) stats[docName].byType.pref++;
+        else if(cell.isPuente) stats[docName].byType.puente++;
+        else stats[docName].byType.resto++;
+      }
+    }
+
+    // if quotas still unmet -> incidence resolution:
+    // try swaps: try to find a day where someone with min<8 can be swapped out for someone who needs quota
+    const unmet = Object.entries(quotas).filter(([n,v])=>v>0);
+    if(unmet.length){
+      for(const [needDoc, val] of unmet){
+        let toFill = val;
+        // iterate days where there is assigned doc with min<8
+        for(const cell of mon.days){
+          if(toFill<=0) break;
+          if(cell.empty) continue;
+          const key = cell.iso;
+          // look for assigned name that has min < 8
+          const pos = assignments[key].names.findIndex(name=>{
+            const doc = doctors.find(d=>d.nombre===name);
+            return doc && doc.min < 8;
+          });
+          if(pos >= 0){
+            const candidate = needDoc;
+            // check adjacency for candidate
+            if(hasAdj(candidate, key)) continue;
+            const removed = assignments[key].names.splice(pos,1)[0];
+            assignments[key].names.push(candidate);
+            // update stats approx:
+            stats[removed].total = Math.max(0, stats[removed].total - 1);
+            const c = cell;
+            if(c.dow===6) stats[removed].byType.sab = Math.max(0, stats[removed].byType.sab - 1);
+            else if(c.isFest) stats[removed].byType.fest = Math.max(0, stats[removed].byType.fest - 1);
+            else if(c.isPref) stats[removed].byType.pref = Math.max(0, stats[removed].byType.pref - 1);
+            else if(c.isPuente) stats[removed].byType.puente = Math.max(0, stats[removed].byType.puente - 1);
+            else stats[removed].byType.resto = Math.max(0, stats[removed].byType.resto - 1);
+
+            stats[candidate].total++;
+            if(c.dow===6) stats[candidate].byType.sab++;
+            else if(c.isFest) stats[candidate].byType.fest++;
+            else if(c.isPref) stats[candidate].byType.pref++;
+            else if(c.isPuente) stats[candidate].byType.puente++;
+            else stats[candidate].byType.resto++;
+
+            toFill--; quotas[needDoc] = Math.max(0, quotas[needDoc]-1);
+          }
+        }
+      }
+    }
+
+    // any remaining quotas recorded as notes
+    Object.entries(quotas).forEach(([name,val])=>{
+      if(val>0){
+        notesGlobal[name] = notesGlobal[name] || [];
+        const short = new Date(mon.year, mon.month, 1).toLocaleString('es-ES',{month:'short', year:'numeric'});
+        notesGlobal[name].push(`${short}: faltan ${val}`);
+      }
+    });
+  } // end months loop
+
+  // recompute final stats (global)
+  recomputeStatsAndRender();
+}
+
+/* ------------- recompute stats and render everything ------------- */
+function recomputeStatsAndRender(){
+  // reset stats
+  Object.keys(stats).forEach(k=>{
+    stats[k].total = 0;
+    stats[k].byDay = {0:0,1:0,2:0,3:0,4:0,5:0,6:0};
+    stats[k].byType = { sab:0, fest:0, pref:0, puente:0, resto:0 };
+  });
+  for(const key in assignments){
+    const arr = assignments[key].names || [];
+    const d = parseIso(key);
+    const dow = d.getDay();
+    const isFest = festivosSet.has(key);
+    const prev = iso(d.getFullYear(), d.getMonth()+1, d.getDate()-1);
+    const next = iso(d.getFullYear(), d.getMonth()+1, d.getDate()+1);
+    const isPuente = festivosSet.has(prev) || festivosSet.has(next);
+    const isPref = festivosSet.has(next);
+    arr.forEach(name=>{
+      if(!stats[name]) stats[name] = { total:0, byDay:{0:0,1:0,2:0,3:0,4:0,5:0,6:0}, byType:{ sab:0, fest:0, pref:0, puente:0, resto:0 } };
+      stats[name].total++;
+      stats[name].byDay[dow] = (stats[name].byDay[dow] || 0) + 1;
+      if(dow===6) stats[name].byType.sab++;
+      else if(isFest) stats[name].byType.fest++;
+      else if(isPref) stats[name].byType.pref++;
+      else if(isPuente) stats[name].byType.puente++;
+      else stats[name].byType.resto++;
+    });
+  }
+  renderMonths();
+  renderResumen();
+}
+
+/* ------------- render resumen table ------------- */
+function renderResumen(){
+  const tbody = document.querySelector('#tablaResumen tbody'); tbody.innerHTML = '';
+  doctors.forEach(d=>{
+    const tr = document.createElement('tr');
+    const st = stats[d.nombre] || { total:0, byDay:{0:0,1:0,2:0,3:0,4:0,5:0,6:0}, byType:{ sab:0, fest:0, pref:0, puente:0, resto:0 } };
+    const note = (notesGlobal[d.nombre] || []).join('; ');
+    tr.innerHTML = `<td style="background:${d.color}">${d.nombre}</td>
+      <td>${st.total}</td>
+      <td>${st.byDay[1]||0}</td>
+      <td>${st.byDay[2]||0}</td>
+      <td>${st.byDay[3]||0}</td>
+      <td>${st.byDay[4]||0}</td>
+      <td>${st.byDay[5]||0}</td>
+      <td>${st.byDay[6]||0}</td>
+      <td>${st.byDay[0]||0}</td>
+      <td>${st.byType.fest||0}</td>
+      <td>${st.byType.puente||0}</td>
+      <td>${st.byType.pref||0}</td>
+      <td class="note">${note}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ------------- CSV export ------------- */
+function exportCsv(){
+  let csv = 'fecha,guardia1,guardia2,manuals\\n';
+  const keys = Object.keys(assignments).sort();
+  keys.forEach(k=>{
+    const a = assignments[k].names || [];
+    const m = assignments[k].manual || [];
+    csv += `${k},${a[0]||''},${a[1]||''},"${m.join('|')}"\\n`;
+  });
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'guardias_aldaia_2025-26.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+/* ------------- UI events ------------- */
+document.getElementById('addMed').addEventListener('click', ()=>{
+  const newIdx = doctors.length;
+  doctors.push({ nombre:'Nuevo', min:2, max:2, color: pastel[newIdx % pastel.length], id:newIdx });
+  renderDoctors(); renderLegend();
+});
+document.getElementById('autoFill').addEventListener('click', ()=> { autoFill(); });
+document.getElementById('clearManual').addEventListener('click', ()=>{
+  for(const k in assignments) assignments[k].manual = [];
+  recomputeStatsAndRender();
+});
+document.getElementById('exportCsv').addEventListener('click', ()=> exportCsv());
+
+/* ------------- START ------------- */
+buildMonths();
+initState();
+</script>
+</body>
+</html>
