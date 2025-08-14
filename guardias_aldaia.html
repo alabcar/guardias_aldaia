@@ -78,7 +78,14 @@
   .cell.type-festivo{background:#ffecec !important;border:4px solid #e74c3c !important;border-radius:12px !important;box-shadow:0 0 0 2px #e74c3c44;}
   .cell.type-festivo .date{color:#b00;font-weight:700;}
   .date{font-weight:700;margin-bottom:6px}
-  .tag{display:inline-block;padding:3px 6px;border-radius:8px;margin:3px 0;font-size:0.72rem}
+  .tag{
+    display:inline-block;
+    padding:3px 6px;
+    border-radius:8px;
+    margin:3px 0;
+    font-size:0.92rem;
+    font-weight:500;
+  }
   table{width:100%;border-collapse:collapse}
   th,td{border:1px solid #eee;padding:6px;text-align:center;font-size:0.82rem}
   th{background:#fafafa}
@@ -107,13 +114,13 @@
     <div class="muted">
       <strong>Reglas de asignación:</strong><br>
       1) Emparejamientos preferidos: <em>Rigo–Luceth</em>, <em>Adela–Mica</em> (si ambos cumplen su intervalo y no hay días consecutivos).<br>
-      2) Equilibrar <em>sábados</em>, <em>festivos</em>, <em>prefestivos</em> y <em>puentes</em> (se prioriza quien menos tenga en el periodo).<br>
+      2) Equilibrar <em>sábados</em>, <em>festivos</em>, <em>prefestivos</em> y <em>puentes</em> (se prioriza quien menos tenga en el periodo, equilibrando proporcionalmente al número de guadias).<br>
       3) Respetar intervalo mínimo entre guardias: <br>
          &nbsp;&nbsp;• 8 guardias/mes → cada 4 días<br>
          &nbsp;&nbsp;• 4 guardias/mes → cada 8 días<br>
          &nbsp;&nbsp;• 3 guardias/mes → cada 10 días<br>
          &nbsp;&nbsp;• 2 guardias/mes → cada 15 días<br>
-         &nbsp;&nbsp;• Silvia → 2 guardias/mes (mínimo 12 días entre guardias)<br>
+
       4) Nunca dos días seguidos para la misma persona.<br>
       5) Puedes modificar el número de guardias/mes de cada médico y volver a generar el calendario.<br>
       6) Los festivos se marcan con borde rojo.<br>
