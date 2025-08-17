@@ -1,3 +1,4 @@
+
 <!-- /index.html -->
 <!DOCTYPE html>
 <html lang="es">
@@ -117,7 +118,7 @@
       </thead>
       <tbody id="resumenBody"></tbody>
     </table>
-    
+      <div id="pairSummary"></div>
   </div>
 
   <!-- Calendarios -->
@@ -220,12 +221,20 @@ function intervaloPorMes(guardiasMes){
 const canonicalPair = (a,b)=> a<b ? `${a}|${b}` : `${b}|${a}`;
 // Parejas preferidas (global)
 const PREFERRED = new Set([canonicalPair('Rigo','Luceth'), canonicalPair('Adela','Mica')]);
-// como mucho 1 vez por mes
+
+// Nueva preferencia: favorecer Julia–Marta y al grupo (Julia, Marta, Amparo, Silvia, Pepe)
+const PRIORITY_GROUP = new Set(['Julia','Marta','Amparo','Silvia','Pepe']);
+// Objetivo de coincidencias para Julia–Marta en todo el periodo (sin romper reglas)
+const FAVORED_PAIR_KEY = canonicalPair('Julia','Marta');
+const FAVORED_PAIR_TARGET = 3;
 // Objetivo total para el periodo (Oct 2025 → Jun 2026)
 // Límites por periodo (más permisivo dentro del grupo priorizado)
-const PAIR_LIMITS = { perPeriod: 3, preferredPerPeriod: Number.POSITIVE_INFINITY };
+const PAIR_LIMITS = { perPeriod: 3, groupPerPeriod: 6, preferredPerPeriod: Number.POSITIVE_INFINITY };
 function pairLimitForKey(k){
-  return PREFERRED.has(k) ? PAIR_LIMITS.preferredPerPeriod : PAIR_LIMITS.perPeriod;
+  const [a,b] = k.split('|');
+  if (PREFERRED.has(k)) return PAIR_LIMITS.preferredPerPeriod;
+  if (PRIORITY_GROUP.has(a) && PRIORITY_GROUP.has(b)) return PAIR_LIMITS.groupPerPeriod;
+  return PAIR_LIMITS.perPeriod;
 }
 
 function generarAsignacion(){
@@ -237,10 +246,6 @@ function generarAsignacion(){
     last[m.nombre]=null;
     tipoCount[m.nombre]={sab:0,fest:0,pref:0,puente:0,dom:0};
   });
-  // Mapa rápido de guardias/mes por médico
-  const mesPorNombre = {}; MEDICOS.forEach(m=> mesPorNombre[m.nombre]=m.mes);
-  // Pesos para equilibrar sábados dentro del grupo de 2/mes
-  const BALANCE = { sab2Weight: 60, sab2MinBonus: 8 };
   
 
   // ---- Diversidad de parejas ----
@@ -250,7 +255,7 @@ function generarAsignacion(){
   
   
   const WEIGHTS = { pairGlobal: 22, pairMonth: 80, pairRecentPenalty: 120, pairCooldownDays: 18, preferredMultiplier: 0 };
-  
+  const BOOST = { groupPairBonus: 20 }; // sesgo leve al grupo // empuje suave al grupo // bonus suaves
   // Límites duros por pareja
   function pairWouldExceedLimit(a,b){
     const k = canonicalPair(a,b);
@@ -281,8 +286,8 @@ function generarAsignacion(){
     }
     if(PREFERRED.has(k)) return 0; // no penalizar las preferidas ni Julia–Marta
     // Penalización suavizada dentro del grupo priorizado
-    
-    
+    const [a,b] = k.split('|');
+    if(PRIORITY_GROUP.has(a) && PRIORITY_GROUP.has(b)) p *= 0.8;
     return p;
   }
 
@@ -305,26 +310,11 @@ function generarAsignacion(){
 
   function penalizacionTipo(name, cell){
     let p = 0;
-    if(cell.sab){
-      // Penalización base por sábados acumulados
-      p += (tipoCount[name]?.sab || 0) * 3;
-      // Si el médico es de 2 guardias/mes, endurecer para igualar con su grupo
-      if(mesPorNombre[name] === 2){
-        const twoNames = MEDICOS.filter(x=> x.mes === 2).map(x=> x.nombre);
-        if(twoNames.length){
-          let minSab = Infinity;
-          for(const n of twoNames){ const c = (tipoCount[n]?.sab || 0); if(c < minSab) minSab = c; }
-          const mySab = (tipoCount[name]?.sab || 0);
-          const diff = mySab - minSab;
-          if(diff > 0) p += diff * BALANCE.sab2Weight; // cuanto más por encima del mínimo, más penaliza
-          else p -= BALANCE.sab2MinBonus; // pequeño bonus si está en el mínimo
-        }
-      }
-    }
-    if(cell.fest) p += (tipoCount[name]?.fest || 0) * 4;
-    if(cell.pref) p += (tipoCount[name]?.pref || 0) * 2;
-    if(cell.puente) p += (tipoCount[name]?.puente || 0) * 2;
-    if(cell.dom) p += (tipoCount[name]?.dom || 0) * 2;
+    if(cell.sab) p += tipoCount[name].sab * 3;
+    if(cell.fest) p += tipoCount[name].fest * 4;
+    if(cell.pref) p += tipoCount[name].pref * 2;
+    if(cell.puente) p += tipoCount[name].puente * 2;
+    if(cell.dom) p += tipoCount[name].dom * 2;
     return p;
   }
 
@@ -333,6 +323,7 @@ function generarAsignacion(){
   function pickBySoftmax(cands, T=0.35, topK=4){
     if(!cands.length) return null;
     const subset = cands.slice(0, Math.max(1, Math.min(topK, cands.length)));
+    // convertir score a prob con softmax de coste (menor score => mayor prob)
     const xs = subset.map(c=> Math.exp(-(c.score)/Math.max(0.001,T)));
     const sum = xs.reduce((a,b)=>a+b,0);
     let r = Math.random()*sum;
@@ -340,19 +331,17 @@ function generarAsignacion(){
     return subset[subset.length-1];
   }
 
-  // Bonus dinámico solo para Julia con {Marta, Amparo, Silvia, Pepe}, favoreciendo distribución
   function computeCandidates(cell, assignedNames, onlyMes2=false){
-    // Construye candidatos respetando reglas y forzando que Julia solo empareje con su conjunto designado cuando esté presente
-    let list = MEDICOS
+    return MEDICOS
       .filter(m=>{
         if(assignedNames.includes(m.nombre)) return false;
         if(onlyMes2 && m.mes!==2) return false;
         if(!canUse(m.nombre, cell.date, m.mes)) return false;
         if(assignedNames.length===1){
           const a = assignedNames[0];
-          if(pairWouldExceedLimit(a, m.nombre)) return false;
-          // Si el candidato es Julia pero el ya asignado no es de sus socios, no permitir Julia aquí
+          if(!PREFERRED.has(canonicalPair(a, m.nombre)) && pairWouldExceedLimit(a, m.nombre)) return false;
         }
+
         return true;
       })
       .map(m=>{
@@ -360,10 +349,19 @@ function generarAsignacion(){
         const pen = penalizacionTipo(m.nombre, cell);
         const pairPen = pairPenaltyFor(m.nombre, assignedNames, cell);
         let bonus = 0;
-        return {m, score: base*100 + pen + pairPen};
+        if(assignedNames.length===1){
+          const aName = assignedNames[0];
+          // Empuje fuerte a Julia–Marta hasta llegar a 3 coincidencias
+          if( (aName==='Julia' && m.nombre==='Marta') || (aName==='Marta' && m.nombre==='Julia') ){
+            const cnt = pairCount[FAVORED_PAIR_KEY] || 0;
+            if(cnt < FAVORED_PAIR_TARGET) bonus -= 120;
+          } else if(PRIORITY_GROUP.has(aName) && PRIORITY_GROUP.has(m.nombre)) {
+            bonus -= BOOST.groupPairBonus;
+          }
+        }
+        return {m, score: base*100 + pen + pairPen + bonus};
       })
       .sort((a,b)=> a.score - b.score);
-    return list;
   }
 
   // recorrido cronológico
@@ -403,11 +401,23 @@ function generarAsignacion(){
       if(asig[cell.iso].length<2){
         if(!intentarPar('Rigo','Luceth')) intentarPar('Adela','Mica');
       }
+
+      // Intento dirigido: Julia–Marta hasta alcanzar 3 coincidencias en todo el periodo (respetando reglas)
+      if(asig[cell.iso].length<2){
+        const cnt = pairCount[FAVORED_PAIR_KEY] || 0;
+        const lp = lastPair[FAVORED_PAIR_KEY];
+        let cooldownOk = true;
+        if(lp){ const diff = Math.round((cell.date - lp)/(1000*3600*24)); cooldownOk = diff >= WEIGHTS.pairCooldownDays; }
+        if(cnt < FAVORED_PAIR_TARGET && cooldownOk){ intentarPar('Julia','Marta'); }
+      }
+
+      
+
       // 2) Relleno general priorizando frecuencia y equilibrio de tipos
       while(asig[cell.iso].length<2){
         const cands = computeCandidates(cell, asig[cell.iso], false);
         if(!cands.length) break;
-        const pickEntry = pickBySoftmax(cands, 0.22, 4) || cands[0];
+        const pickEntry = pickBySoftmax(cands, 0.35, 4) || cands[0];
         const pick = pickEntry.m;
         // aplicar asignación
         asig[cell.iso].push(pick.nombre);
@@ -427,7 +437,7 @@ function generarAsignacion(){
       while(asig[cell.iso].length<2){
         const flex = computeCandidates(cell, asig[cell.iso], true);
         if(!flex.length) break;
-        const pickEntry = pickBySoftmax(flex, 0.22, 4) || flex[0];
+        const pickEntry = pickBySoftmax(flex, 0.35, 4) || flex[0];
         const pick = pickEntry.m;
         asig[cell.iso].push(pick.nombre);
         last[pick.nombre]=new Date(cell.date);
@@ -477,7 +487,7 @@ function renderDoctors(){
 /* =========================
    Render calendario + resumen
    ========================= */
-function renderCalendario(asig){
+function renderCalendario(asig, extras={}){
   const monthsEl=document.getElementById('months');
   monthsEl.innerHTML='';
   const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -540,6 +550,23 @@ function renderCalendario(asig){
     tabla.appendChild(tbody);
     sum.appendChild(tabla);
     box.appendChild(sum);
+
+    // Top parejas del mes (hasta 5)
+    const ym = `${mon.year}-${pad(mon.month+1)}`;
+    const pm = (extras.pairCountMonth && extras.pairCountMonth[ym]) || {};
+    const monthPairs = Object.entries(pm).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if(monthPairs.length){
+      const sumPairs = document.createElement('div'); sumPairs.className='month-summary';
+      const hPairs = document.createElement('h4'); hPairs.textContent='Top parejas del mes'; sumPairs.appendChild(hPairs);
+      const t2=document.createElement('table'); t2.innerHTML='<thead><tr><th>Pareja</th><th>Veces</th></tr></thead>';
+      const tb2=document.createElement('tbody');
+      monthPairs.forEach(([k,c])=>{ const [a,b]=k.split('|'); const tr=document.createElement('tr');
+      const lim = pairLimitForKey(k);
+      if(c>lim){ tr.style.background='#ffecec'; tr.style.border='1px solid #e74c3c'; }
+      tr.innerHTML=`<td>${a} — ${b}</td><td>${c}</td>`; tb2.appendChild(tr); });
+      t2.appendChild(tb2); sumPairs.appendChild(t2); box.appendChild(sumPairs);
+    }
+
     monthsEl.appendChild(box);
   });
 
@@ -554,6 +581,20 @@ function renderCalendario(asig){
   });
 
   // Resumen de parejas (global del periodo)
+  const pairHost = document.getElementById('pairSummary');
+  if(pairHost){
+    const entries = Object.entries(extras.pairCount || {}).sort((a,b)=> b[1]-a[1]);
+    const table=document.createElement('table');
+    table.innerHTML='<thead><tr><th>Pareja</th><th>Veces</th></tr></thead>';
+    const tbody=document.createElement('tbody');
+    entries.forEach(([k,c])=>{ const [a,b]=k.split('|'); const tr=document.createElement('tr');
+    const lim = pairLimitForKey(k);
+    if(c>lim){ tr.style.background='#ffecec'; tr.style.border='1px solid #e74c3c'; }
+    tr.innerHTML=`<td>${a} — ${b}</td><td>${c}</td>`; tbody.appendChild(tr); });
+    table.appendChild(tbody);
+    pairHost.innerHTML='<h4 style=\"margin:10px 0 6px\">Parejas más repetidas (periodo)</h4>';
+    pairHost.appendChild(table);
+  }
 }
 
 /* ================
@@ -575,7 +616,7 @@ document.getElementById('btnGenerar').addEventListener('click', ()=>{
   // 2) Recalcular
   buildMonths();
   const gen = generarAsignacion();
-  renderCalendario(gen.asig);
+  renderCalendario(gen.asig, { pairCount: gen.pairCount, pairCountMonth: gen.pairCountMonth });
 
   // 3) (Opcional) re-render de la lista si quieres que se reordene por nuevo "mes"
   // renderDoctors();
@@ -583,7 +624,6 @@ document.getElementById('btnGenerar').addEventListener('click', ()=>{
 
 // Autogenerar en carga para ver algo
 setTimeout(()=>document.getElementById('btnGenerar').click());
-
 </script>
 </body>
 </html>
