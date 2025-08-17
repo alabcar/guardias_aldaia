@@ -204,13 +204,12 @@ function buildMonths(){
 /* ====================================
    Lógica de frecuencias y asignación
    ==================================== */
-// Intervalo objetivo por grupo
 function intervaloPorMes(guardiasMes){
   if(guardiasMes>=8) return 4;
   if(guardiasMes===4) return 8;
   if(guardiasMes===3) return 10;
   if(guardiasMes===2) return 15;
-  if(guardiasMes<=1) return 30; // Silvia (o quien tenga 1)
+  if(guardiasMes<=1) return 30;
   return Math.max(3, Math.round(30/guardiasMes));
 }
 
@@ -352,11 +351,18 @@ function renderDoctors(){
     const div=document.createElement('div'); div.className='pill';
     const sw=document.createElement('span'); sw.className='sw'; sw.style.background=color[m.nombre];
     const txt=document.createElement('span'); txt.textContent=m.nombre;
-    const input=document.createElement('input'); input.type='number'; input.min=1; input.value=m.mes; input.style.width='48px';
-    input.addEventListener('change',e=>{
-      const val = Math.max(1,parseInt(e.target.value)||1);
-      m.mes = val;
+
+    const input=document.createElement('input');
+    input.type='number'; input.min=1; input.step=1; input.value=m.mes; input.style.width='56px';
+    input.dataset.nombre = m.nombre; // mapeo robusto por nombre
+
+    // Actualiza el modelo mientras se teclea (sin esperar blur)
+    input.addEventListener('input', e=>{
+      const val = Math.max(1, parseInt(e.target.value)||1);
+      const doc = MEDICOS.find(d=>d.nombre===m.nombre);
+      if(doc) doc.mes = val; // por nombre, no por índice
     });
+
     div.append(sw,txt,input); host.appendChild(div);
   });
 }
@@ -369,14 +375,12 @@ function renderCalendario(asig){
   monthsEl.innerHTML='';
   const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-  // resumen global
   const res={}; MEDICOS.forEach(m=> res[m.nombre]={tot:0,sab:0,dom:0,fest:0,pref:0,puente:0});
 
   months.forEach(mon=>{
     const box=document.createElement('div'); box.className='month';
     const h=document.createElement('h3'); h.textContent=`${meses[mon.month]} ${mon.year}`; box.appendChild(h);
 
-    // acumulador mensual
     const monthTotals={}; MEDICOS.forEach(m=> monthTotals[m.nombre]=0);
 
     const grid=document.createElement('div'); grid.className='grid';
@@ -386,7 +390,6 @@ function renderCalendario(asig){
       const c=document.createElement('div'); c.className='cell';
       if(cell.empty){ c.classList.add('empty'); grid.appendChild(c); return; }
 
-      // clases de estilo
       if(cell.fest) c.classList.add('festivo');
       else if(cell.pref) c.classList.add('pref');
       else if(cell.puente) c.classList.add('puente');
@@ -398,9 +401,7 @@ function renderCalendario(asig){
       (asig[cell.iso]||[]).forEach(n=>{
         const t=document.createElement('div'); t.className='tag'; t.style.background=color[n]; t.textContent=n;
         c.appendChild(t);
-        // global
         res[n].tot++; if(cell.sab)res[n].sab++; if(cell.dom)res[n].dom++; if(cell.fest)res[n].fest++; if(cell.pref)res[n].pref++; if(cell.puente)res[n].puente++;
-        // mensual
         monthTotals[n]++;
       });
 
@@ -409,7 +410,6 @@ function renderCalendario(asig){
 
     box.appendChild(grid);
 
-    // resumen mensual debajo del mes
     const sum=document.createElement('div'); sum.className='month-summary';
     const totalMes = Object.values(monthTotals).reduce((a,b)=>a+b,0);
     const h4=document.createElement('h4'); h4.textContent=`Resumen del mes — Total guardias: ${totalMes}`; sum.appendChild(h4);
@@ -437,7 +437,6 @@ function renderCalendario(asig){
     monthsEl.appendChild(box);
   });
 
-  // resumen global (periodo)
   const tb=document.getElementById('resumenBody'); tb.innerHTML='';
   const medicosOrdenados = [...MEDICOS].sort((a,b)=>b.mes-a.mes);
   medicosOrdenados.forEach(m=>{
@@ -456,16 +455,31 @@ buildMonths();
 renderDoctors();
 
 document.getElementById('btnGenerar').addEventListener('click', ()=>{
-  // sincroniza entradas
-  const pills = document.querySelectorAll('#doctorsList .pill');
-  pills.forEach((div, idx) => {
-    const input = div.querySelector('input[type="number"]');
-    const val = Math.max(1,parseInt(input.value)||1);
-    MEDICOS[idx].mes = val;
+  // 1) Leer SIEMPRE los inputs por nombre (el listado está ordenado y no coincide con índices de MEDICOS)
+  const inputs = document.querySelectorAll('#doctorsList input[type="number"]');
+  inputs.forEach(input => {
+    const nombre = input.dataset.nombre;
+    const val = Math.max(1, parseInt(input.value)||1);
+    const doc = MEDICOS.find(m=>m.nombre===nombre);
+    if(doc) doc.mes = val;
   });
+
+  // 2) Recalcular
   buildMonths();
   const asig = generarAsignacion();
   renderCalendario(asig);
+
+  // 3) Reordenar y re-renderizar la lista de médicos según los nuevos valores
+  renderDoctors();
+});
+
+  // 2) Recalcular
+  buildMonths();
+  const asig = generarAsignacion();
+  renderCalendario(asig);
+
+  // 3) (Opcional) re-render de la lista si quieres que se reordene por nuevo "mes"
+  // renderDoctors();
 });
 
 // Autogenerar en carga para ver algo
