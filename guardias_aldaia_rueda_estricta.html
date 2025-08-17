@@ -117,7 +117,6 @@
       </thead>
       <tbody id="resumenBody"></tbody>
     </table>
-      <div id="pairSummary"></div>
   </div>
 
   <!-- Calendarios -->
@@ -225,7 +224,9 @@ const PREFERRED = new Set([canonicalPair('Rigo','Luceth'), canonicalPair('Adela'
 const PRIORITY_GROUP = new Set(['Julia','Marta','Amparo','Silvia','Pepe']);
 // Objetivo de coincidencias para Julia–Marta en todo el periodo (sin romper reglas)
 const FAVORED_PAIR_KEY = canonicalPair('Julia','Marta');
-const FAVORED_PAIR_TARGET = 3;
+const FAVORED_PAIR_TARGET = 1;
+const FAVORED_COOLDOWN_DAYS = 35;  // separación mínima entre Julia–Marta
+const FAVORED_MAX_PER_MONTH = 1;   // como mucho 1 vez por mes
 // Objetivo total para el periodo (Oct 2025 → Jun 2026)
 // Límites por periodo (más permisivo dentro del grupo priorizado)
 const PAIR_LIMITS = { perPeriod: 3, groupPerPeriod: 6, preferredPerPeriod: Number.POSITIVE_INFINITY };
@@ -350,10 +351,15 @@ function generarAsignacion(){
         let bonus = 0;
         if(assignedNames.length===1){
           const aName = assignedNames[0];
-          // Empuje fuerte a Julia–Marta hasta llegar a 3 coincidencias
+          // Empuje fuerte a Julia–Marta hasta llegar a 3 coincidencias (respetando distancia y 1/mes)
           if( (aName==='Julia' && m.nombre==='Marta') || (aName==='Marta' && m.nombre==='Julia') ){
-            const cnt = pairCount[FAVORED_PAIR_KEY] || 0;
-            if(cnt < FAVORED_PAIR_TARGET) bonus -= 120;
+            const cnt = (pairCount[FAVORED_PAIR_KEY] || 0);
+            const ym = cell.iso.slice(0,7);
+            const perMonth = (pairCountMonth[ym] && pairCountMonth[ym][FAVORED_PAIR_KEY]) || 0;
+            const lp = lastPair[FAVORED_PAIR_KEY];
+            let cooldownOk = true;
+            if(lp){ const diff = Math.round((cell.date - lp)/(1000*3600*24)); cooldownOk = diff >= FAVORED_COOLDOWN_DAYS; }
+            if(cnt < FAVORED_PAIR_TARGET && cooldownOk && perMonth < FAVORED_MAX_PER_MONTH) bonus -= 120;
           } else if(PRIORITY_GROUP.has(aName) && PRIORITY_GROUP.has(m.nombre)) {
             bonus -= BOOST.groupPairBonus;
           }
@@ -404,13 +410,13 @@ function generarAsignacion(){
       // Intento dirigido: Julia–Marta hasta alcanzar 3 coincidencias en todo el periodo (respetando reglas)
       if(asig[cell.iso].length<2){
         const cnt = pairCount[FAVORED_PAIR_KEY] || 0;
+        const ym = cell.iso.slice(0,7);
+        const perMonth = (pairCountMonth[ym] && pairCountMonth[ym][FAVORED_PAIR_KEY]) || 0;
         const lp = lastPair[FAVORED_PAIR_KEY];
         let cooldownOk = true;
-        if(lp){ const diff = Math.round((cell.date - lp)/(1000*3600*24)); cooldownOk = diff >= WEIGHTS.pairCooldownDays; }
-        if(cnt < FAVORED_PAIR_TARGET && cooldownOk){ intentarPar('Julia','Marta'); }
+        if(lp){ const diff = Math.round((cell.date - lp)/(1000*3600*24)); cooldownOk = diff >= FAVORED_COOLDOWN_DAYS; }
+        if(cnt < FAVORED_PAIR_TARGET && cooldownOk && perMonth < FAVORED_MAX_PER_MONTH){ intentarPar('Julia','Marta'); }
       }
-
-      
 
       // 2) Relleno general priorizando frecuencia y equilibrio de tipos
       while(asig[cell.iso].length<2){
@@ -486,7 +492,7 @@ function renderDoctors(){
 /* =========================
    Render calendario + resumen
    ========================= */
-function renderCalendario(asig, extras={}){
+function renderCalendario(asig){
   const monthsEl=document.getElementById('months');
   monthsEl.innerHTML='';
   const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -549,23 +555,6 @@ function renderCalendario(asig, extras={}){
     tabla.appendChild(tbody);
     sum.appendChild(tabla);
     box.appendChild(sum);
-
-    // Top parejas del mes (hasta 5)
-    const ym = `${mon.year}-${pad(mon.month+1)}`;
-    const pm = (extras.pairCountMonth && extras.pairCountMonth[ym]) || {};
-    const monthPairs = Object.entries(pm).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    if(monthPairs.length){
-      const sumPairs = document.createElement('div'); sumPairs.className='month-summary';
-      const hPairs = document.createElement('h4'); hPairs.textContent='Top parejas del mes'; sumPairs.appendChild(hPairs);
-      const t2=document.createElement('table'); t2.innerHTML='<thead><tr><th>Pareja</th><th>Veces</th></tr></thead>';
-      const tb2=document.createElement('tbody');
-      monthPairs.forEach(([k,c])=>{ const [a,b]=k.split('|'); const tr=document.createElement('tr');
-      const lim = pairLimitForKey(k);
-      if(c>lim){ tr.style.background='#ffecec'; tr.style.border='1px solid #e74c3c'; }
-      tr.innerHTML=`<td>${a} — ${b}</td><td>${c}</td>`; tb2.appendChild(tr); });
-      t2.appendChild(tb2); sumPairs.appendChild(t2); box.appendChild(sumPairs);
-    }
-
     monthsEl.appendChild(box);
   });
 
@@ -580,20 +569,6 @@ function renderCalendario(asig, extras={}){
   });
 
   // Resumen de parejas (global del periodo)
-  const pairHost = document.getElementById('pairSummary');
-  if(pairHost){
-    const entries = Object.entries(extras.pairCount || {}).sort((a,b)=> b[1]-a[1]);
-    const table=document.createElement('table');
-    table.innerHTML='<thead><tr><th>Pareja</th><th>Veces</th></tr></thead>';
-    const tbody=document.createElement('tbody');
-    entries.forEach(([k,c])=>{ const [a,b]=k.split('|'); const tr=document.createElement('tr');
-    const lim = pairLimitForKey(k);
-    if(c>lim){ tr.style.background='#ffecec'; tr.style.border='1px solid #e74c3c'; }
-    tr.innerHTML=`<td>${a} — ${b}</td><td>${c}</td>`; tbody.appendChild(tr); });
-    table.appendChild(tbody);
-    pairHost.innerHTML='<h4 style=\"margin:10px 0 6px\">Parejas más repetidas (periodo)</h4>';
-    pairHost.appendChild(table);
-  }
 }
 
 /* ================
