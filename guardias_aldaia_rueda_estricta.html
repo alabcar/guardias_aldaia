@@ -229,14 +229,12 @@ function generarAsignacion(){
       const diff = Math.round((dt - L)/(1000*3600*24));
       if(diff <= 1) return false; // nunca dos seguidos
       const need = intervaloPorMes(guardiasMes);
-      if(diff < need) return false;
+      if(diff < need) return false; // respeta intervalo por grupo
     }
-    if(name==='Silvia'){
-      const ym = ymd(dt).slice(0,7);
-      monthCount[ym]=monthCount[ym]||{};
-      const max = MEDICOS.find(m=>m.nombre==='Silvia').mes;
-      if((monthCount[ym][name]||0) >= max) return false;
-    }
+    // Límite mensual UNIFORME para todos según su parámetro "mes"
+    const ym = ymd(dt).slice(0,7);
+    monthCount[ym] = monthCount[ym] || {};
+    if ((monthCount[ym][name] || 0) >= guardiasMes) return false;
     return true;
   }
 
@@ -250,12 +248,15 @@ function generarAsignacion(){
     return p;
   }
 
+  // recorrido cronológico
   months.forEach(mon=>{
     mon.days.forEach(cell=>{
       if(cell.empty) return;
       asig[cell.iso] = [];
+
       const elegibles = MEDICOS.filter(m=> canUse(m.nombre, cell.date, m.mes));
 
+      // 1) Emparejamientos preferidos
       function intentarPar(a,b){
         const A = elegibles.find(x=>x.nombre===a);
         const B = elegibles.find(x=>x.nombre===b);
@@ -278,9 +279,10 @@ function generarAsignacion(){
       }
 
       if(asig[cell.iso].length<2){
-        if(intentarPar('Rigo','Luceth')===false){ intentarPar('Adela','Mica'); }
+        if(!intentarPar('Rigo','Luceth')) intentarPar('Adela','Mica');
       }
 
+      // 2) Relleno general priorizando frecuencia y equilibrio de tipos
       if(asig[cell.iso].length<2){
         const cands = MEDICOS
           .filter(m=> !asig[cell.iso].includes(m.nombre) && canUse(m.nombre, cell.date, m.mes))
@@ -306,26 +308,25 @@ function generarAsignacion(){
         }
       }
 
+      // 3) Flex: sólo médicos con 2/mes (respetando tope e intervalos)
       if(asig[cell.iso].length<2){
         const flex = MEDICOS
           .filter(m=>{
             if(asig[cell.iso].includes(m.nombre)) return false;
-            if(m.mes !== 2) return false; // sólo de 2 guardias
-            const L = last[m.nombre];
-            if(L){
-              const diff = Math.round((cell.date - L)/(1000*3600*24));
-              if(diff<=1) return false;
-            }
-            return true;
+            if(m.mes !== 2) return false;
+            return canUse(m.nombre, cell.date, m.mes);
           })
           .map(m=>({m, score: penalizacionTipo(m.nombre, cell)}))
           .sort((a,b)=> a.score - b.score);
+
         while(asig[cell.iso].length<2 && flex.length){
           const pick = flex.shift().m;
-          asig[cell.iso].push(pick.nombre);
-          last[pick.nombre]=new Date(cell.date);
           const ym = cell.iso.slice(0,7);
           monthCount[ym]=monthCount[ym]||{};
+          if ((monthCount[ym][pick.nombre]||0) >= pick.mes) continue;
+
+          asig[cell.iso].push(pick.nombre);
+          last[pick.nombre]=new Date(cell.date);
           monthCount[ym][pick.nombre]=(monthCount[ym][pick.nombre]||0)+1;
           if(cell.sab) tipoCount[pick.nombre].sab++;
           if(cell.fest) tipoCount[pick.nombre].fest++;
@@ -463,15 +464,6 @@ document.getElementById('btnGenerar').addEventListener('click', ()=>{
     const doc = MEDICOS.find(m=>m.nombre===nombre);
     if(doc) doc.mes = val;
   });
-
-  // 2) Recalcular
-  buildMonths();
-  const asig = generarAsignacion();
-  renderCalendario(asig);
-
-  // 3) Reordenar y re-renderizar la lista de médicos según los nuevos valores
-  renderDoctors();
-});
 
   // 2) Recalcular
   buildMonths();
