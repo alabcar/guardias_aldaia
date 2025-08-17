@@ -223,6 +223,9 @@ const PREFERRED = new Set([canonicalPair('Rigo','Luceth'), canonicalPair('Adela'
 
 // Nueva preferencia: favorecer Julia–Marta y al grupo (Julia, Marta, Amparo, Silvia, Pepe)
 const PRIORITY_GROUP = new Set(['Julia','Marta','Amparo','Silvia','Pepe']);
+// Objetivo de coincidencias para Julia–Marta en todo el periodo (sin romper reglas)
+const FAVORED_PAIR_KEY = canonicalPair('Julia','Marta');
+const FAVORED_PAIR_TARGET = 3;
 // Objetivo total para el periodo (Oct 2025 → Jun 2026)
 // Límites por periodo (más permisivo dentro del grupo priorizado)
 const PAIR_LIMITS = { perPeriod: 3, groupPerPeriod: 6, preferredPerPeriod: Number.POSITIVE_INFINITY };
@@ -347,7 +350,13 @@ function generarAsignacion(){
         let bonus = 0;
         if(assignedNames.length===1){
           const aName = assignedNames[0];
-          if(PRIORITY_GROUP.has(aName) && PRIORITY_GROUP.has(m.nombre)) bonus -= BOOST.groupPairBonus;
+          // Empuje fuerte a Julia–Marta hasta llegar a 3 coincidencias
+          if( (aName==='Julia' && m.nombre==='Marta') || (aName==='Marta' && m.nombre==='Julia') ){
+            const cnt = pairCount[FAVORED_PAIR_KEY] || 0;
+            if(cnt < FAVORED_PAIR_TARGET) bonus -= 120;
+          } else if(PRIORITY_GROUP.has(aName) && PRIORITY_GROUP.has(m.nombre)) {
+            bonus -= BOOST.groupPairBonus;
+          }
         }
         return {m, score: base*100 + pen + pairPen + bonus};
       })
@@ -390,6 +399,15 @@ function generarAsignacion(){
 
       if(asig[cell.iso].length<2){
         if(!intentarPar('Rigo','Luceth')) intentarPar('Adela','Mica');
+      }
+
+      // Intento dirigido: Julia–Marta hasta alcanzar 3 coincidencias en todo el periodo (respetando reglas)
+      if(asig[cell.iso].length<2){
+        const cnt = pairCount[FAVORED_PAIR_KEY] || 0;
+        const lp = lastPair[FAVORED_PAIR_KEY];
+        let cooldownOk = true;
+        if(lp){ const diff = Math.round((cell.date - lp)/(1000*3600*24)); cooldownOk = diff >= WEIGHTS.pairCooldownDays; }
+        if(cnt < FAVORED_PAIR_TARGET && cooldownOk){ intentarPar('Julia','Marta'); }
       }
 
       
